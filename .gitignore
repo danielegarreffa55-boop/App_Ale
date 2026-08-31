@@ -72,5 +72,7 @@ emulator-data/
 
 # Generated Firebase options contain public project identifiers and are
 # generated per environment during deployment.
+config/*.json
+!config/*.example.json
 lib/firebase_options.dart
 web/firebase-messaging-sw.js
