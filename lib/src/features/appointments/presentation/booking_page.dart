@@ -1,0 +1,284 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import '../../../core/utils/date_time_x.dart';
+import '../../../providers.dart';
+import '../../../shared/async_value_view.dart';
+import '../domain/appointment_models.dart';
+
+class BookingPage extends ConsumerStatefulWidget {
+  const BookingPage({super.key});
+
+  @override
+  ConsumerState<BookingPage> createState() => _BookingPageState();
+}
+
+class _BookingPageState extends ConsumerState<BookingPage> {
+  SalonService? _service;
+  DateTime _day = DateUtils.dateOnly(
+    DateTime.now().add(const Duration(days: 1)),
+  );
+  Future<List<AvailabilitySlot>>? _slots;
+  AvailabilitySlot? _selectedSlot;
+  var _submitting = false;
+
+  void _loadSlots() {
+    final service = _service;
+    if (service == null) return;
+    setState(() {
+      _selectedSlot = null;
+      _slots = ref
+          .read(appointmentRepositoryProvider)
+          .availability(serviceId: service.id, localDay: _day);
+    });
+  }
+
+  Future<void> _pickDay() async {
+    final now = DateUtils.dateOnly(DateTime.now());
+    final day = await showDatePicker(
+      context: context,
+      initialDate: _day.isBefore(now) ? now : _day,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 180)),
+      locale: const Locale('it', 'IT'),
+      helpText: 'Scegli il giorno',
+    );
+    if (day == null) return;
+    _day = day;
+    _loadSlots();
+  }
+
+  Future<void> _submit() async {
+    final service = _service;
+    final slot = _selectedSlot;
+    if (service == null || slot == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invia richiesta'),
+        content: Text(
+          '${service.name}\n${slot.startAt.italianDateTime}\n\n'
+          'La richiesta dovrà essere confermata dallo studio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Indietro'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Invia richiesta'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _submitting = true);
+    try {
+      await ref
+          .read(appointmentRepositoryProvider)
+          .createRequest(serviceId: service.id, requestedStartAt: slot.startAt);
+      if (!mounted) return;
+      ref.invalidate(clientAppointmentsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Richiesta inviata. Ti avviseremo dopo la conferma.'),
+        ),
+      );
+      context.go('/appointments');
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Invio non riuscito: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final services = ref.watch(servicesProvider);
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Prenota',
+                  style: Theme.of(context).textTheme.displaySmall,
+                ),
+                const SizedBox(height: 8),
+                const Text('1. Scegli il servizio'),
+                const SizedBox(height: 16),
+                AsyncValueView<List<SalonService>>(
+                  value: services,
+                  onRetry: () => ref.invalidate(servicesProvider),
+                  data: (items) {
+                    if (items.isEmpty) {
+                      return const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'Nessun servizio prenotabile al momento.',
+                          ),
+                        ),
+                      );
+                    }
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: items.map((service) {
+                        final selected = service.id == _service?.id;
+                        final price = service.priceCents == null
+                            ? null
+                            : NumberFormat.simpleCurrency(locale: 'it_IT')
+                                  .format(service.priceCents! / 100);
+                        return SizedBox(
+                          width: 280,
+                          child: Card(
+                            color: selected
+                                ? Theme.of(context)
+                                      .colorScheme
+                                      .secondaryContainer
+                                : null,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onTap: () {
+                                _service = service;
+                                _loadSlots();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            service.name,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleLarge,
+                                          ),
+                                        ),
+                                        if (selected)
+                                          const Icon(
+                                            Icons.check_circle_rounded,
+                                          ),
+                                      ],
+                                    ),
+                                    if (service.description.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(service.description),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      '${service.durationMinutes} min'
+                                      '${price == null ? '' : ' · $price'}',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+                if (_service != null) ...[
+                  const SizedBox(height: 32),
+                  const Text('2. Scegli giorno e orario'),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _pickDay,
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text(
+                      DateFormat('EEEE d MMMM', 'it_IT').format(_day),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_slots case final slotsFuture?)
+                    FutureBuilder<List<AvailabilitySlot>>(
+                      future: slotsFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.cloud_off_outlined),
+                              title: const Text('Orari non disponibili'),
+                              subtitle: Text('${snapshot.error}'),
+                              trailing: IconButton(
+                                onPressed: _loadSlots,
+                                icon: const Icon(Icons.refresh),
+                              ),
+                            ),
+                          );
+                        }
+                        final slots = snapshot.data ?? const [];
+                        if (slots.isEmpty) {
+                          return const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Text(
+                                'Nessuno slot disponibile in questo giorno.',
+                              ),
+                            ),
+                          );
+                        }
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: slots.map((slot) {
+                            final selected =
+                                slot.startAt == _selectedSlot?.startAt;
+                            return ChoiceChip(
+                              key: Key(
+                                'slot-${slot.startAt.toIso8601String()}',
+                              ),
+                              selected: selected,
+                              onSelected: (_) =>
+                                  setState(() => _selectedSlot = slot),
+                              label: Text(slot.startAt.italianTime),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                ],
+                if (_selectedSlot != null) ...[
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      key: const Key('submitBookingButton'),
+                      onPressed: _submitting ? null : _submit,
+                      icon: const Icon(Icons.send_outlined),
+                      label: Text(
+                        _submitting ? 'Invio in corso…' : 'Controlla e invia',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

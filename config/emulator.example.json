@@ -1,0 +1,23 @@
+{
+  "STUDIO_NAME": "Atelier Studio Demo",
+  "APP_NAME": "Atelier Demo",
+  "SUPPORT_EMAIL": "demo@example.invalid",
+  "SUPPORT_PHONE": "+390000000000",
+  "ADDRESS": "Ambiente locale",
+  "TIMEZONE": "Europe/Rome",
+  "CURRENCY": "EUR",
+  "REMINDER_TIME": "18:00",
+  "FIREBASE_API_KEY": "demo-api-key",
+  "FIREBASE_APP_ID_ANDROID": "1:1234567890:android:demo",
+  "FIREBASE_APP_ID_IOS": "1:1234567890:ios:demo",
+  "FIREBASE_APP_ID_WEB": "1:1234567890:web:demo",
+  "FIREBASE_MESSAGING_SENDER_ID": "1234567890",
+  "FIREBASE_PROJECT_ID": "salon-booking-demo",
+  "FIREBASE_STORAGE_BUCKET": "salon-booking-demo.appspot.com",
+  "FIREBASE_AUTH_DOMAIN": "salon-booking-demo.firebaseapp.com",
+  "FIREBASE_MEASUREMENT_ID": "",
+  "RECAPTCHA_V3_SITE_KEY": "",
+  "FCM_WEB_VAPID_KEY": "",
+  "USE_FIREBASE_EMULATORS": true,
+  "FIREBASE_EMULATOR_HOST": "localhost"
+}

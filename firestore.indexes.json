@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "appointments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "clientId", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "appointments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "confirmedStartAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "services",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "active", "order": "ASCENDING"},
+        {"fieldPath": "displayOrder", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "blocks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "active", "order": "ASCENDING"},
+        {"fieldPath": "startAt", "order": "ASCENDING"}
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

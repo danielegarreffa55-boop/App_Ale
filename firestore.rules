@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function ownsUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if ownsUser(uid) || isAdmin();
+      // Profiles, notification flags and deletion are written by callable
+      // functions so a client can never inject admin-related fields.
+      allow create, update, delete: if false;
+
+      match /devices/{deviceId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /services/{serviceId} {
+      allow read: if signedIn() && (resource.data.active == true || isAdmin());
+      allow create, update, delete: if isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'name', 'description', 'durationMinutes', 'bufferMinutes',
+          'priceCents', 'active', 'displayOrder', 'createdAt', 'updatedAt'
+        ]);
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.clientId == request.auth.uid);
+      // All appointment writes and state transitions are server-side.
+      allow create, update, delete: if false;
+    }
+
+    match /studio/config {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /blocks/{blockId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /appointmentLocks/{lockId} {
+      allow read, write: if false;
+    }
+
+    match /notificationLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /rateLimits/{limitId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
