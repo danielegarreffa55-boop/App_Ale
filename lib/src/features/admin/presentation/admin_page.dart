@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_strings.dart';
@@ -13,6 +14,7 @@ import '../../../shared/appointment_card.dart';
 import '../../../shared/async_value_view.dart';
 import '../../../shared/brand_logo.dart';
 import '../../appointments/domain/appointment_models.dart';
+import 'admin_day_calendar.dart';
 
 class AdminPage extends ConsumerStatefulWidget {
   const AdminPage({super.key});
@@ -354,79 +356,6 @@ class _MetricCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelLarge,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AdminAgendaCard extends StatelessWidget {
-  const _AdminAgendaCard({required this.appointment, required this.trailing});
-
-  final Appointment appointment;
-  final Widget trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appointment.clientName ?? 'Cliente',
-                        style: theme.textTheme.titleLarge,
-                      ),
-                      if (appointment.clientPhone case final phone?) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          phone,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.64,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                trailing,
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(appointment.serviceName, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: 19,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(appointment.effectiveStartAt.italianDateTime),
-                  ],
-                ),
-                AppointmentStatusChip(status: appointment.status),
-              ],
             ),
           ],
         ),
@@ -845,13 +774,41 @@ class _RequestsSection extends ConsumerWidget {
   }
 }
 
-class _AgendaSection extends ConsumerWidget {
+class _AgendaSection extends ConsumerStatefulWidget {
   const _AgendaSection();
 
-  Future<void> _manualAppointment(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<_AgendaSection> createState() => _AgendaSectionState();
+}
+
+class _AgendaSectionState extends ConsumerState<_AgendaSection> {
+  static const _dayKeys = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ];
+
+  late DateTime _selectedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    final today = DateTime.now().inStudioTimezone;
+    _selectedDay = DateTime(today.year, today.month, today.day);
+  }
+
+  Future<void> _manualAppointment(
+    BuildContext context, {
+    DateTime? initialStartAt,
+  }) async {
     final clients = ref.read(clientsProvider).value ?? const [];
     final services = ref.read(adminServicesProvider).value ?? const [];
-    if (clients.isEmpty || services.isEmpty) {
+    final activeServices = services.where((service) => service.active).toList();
+    if (clients.isEmpty || activeServices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Servono almeno un cliente e un servizio.'),
@@ -860,13 +817,13 @@ class _AgendaSection extends ConsumerWidget {
       return;
     }
     var clientId = clients.first['id']! as String;
-    var serviceId = services.first.id;
-    DateTime? startAt;
+    var serviceId = activeServices.first.id;
+    DateTime? startAt = initialStartAt;
     final submitted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Nuovo appuntamento manuale'),
+          title: const Text('Nuovo appuntamento'),
           content: SizedBox(
             width: 440,
             child: Column(
@@ -891,8 +848,7 @@ class _AgendaSection extends ConsumerWidget {
                 DropdownButtonFormField<String>(
                   initialValue: serviceId,
                   decoration: const InputDecoration(labelText: 'Servizio'),
-                  items: services
-                      .where((service) => service.active)
+                  items: activeServices
                       .map(
                         (service) => DropdownMenuItem(
                           value: service.id,
@@ -907,7 +863,10 @@ class _AgendaSection extends ConsumerWidget {
                   title: Text(startAt?.italianDateTime ?? 'Scegli data e ora'),
                   trailing: const Icon(Icons.calendar_month_outlined),
                   onTap: () async {
-                    final picked = await _pickDateTime(context);
+                    final picked = await _pickDateTime(
+                      context,
+                      initial: startAt,
+                    );
                     if (picked != null) setDialogState(() => startAt = picked);
                   },
                 ),
@@ -939,6 +898,16 @@ class _AgendaSection extends ConsumerWidget {
             startAt: startAt!,
           );
       ref.invalidate(adminAppointmentsProvider);
+      final localStart = startAt!.inStudioTimezone;
+      if (mounted) {
+        setState(
+          () => _selectedDay = DateTime(
+            localStart.year,
+            localStart.month,
+            localStart.day,
+          ),
+        );
+      }
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -948,8 +917,11 @@ class _AgendaSection extends ConsumerWidget {
     }
   }
 
-  Future<void> _createBlock(BuildContext context, WidgetRef ref) async {
-    final start = await _pickDateTime(context);
+  Future<void> _createBlock(
+    BuildContext context, {
+    DateTime? initialStartAt,
+  }) async {
+    final start = await _pickDateTime(context, initial: initialStartAt);
     if (start == null || !context.mounted) return;
     final end = await _pickDateTime(
       context,
@@ -966,6 +938,7 @@ class _AgendaSection extends ConsumerWidget {
       await ref
           .read(appointmentRepositoryProvider)
           .adminCreateBlock(startAt: start, endAt: end, reason: reason);
+      ref.invalidate(adminBlocksProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Fascia bloccata.')));
@@ -979,110 +952,278 @@ class _AgendaSection extends ConsumerWidget {
     }
   }
 
+  Future<void> _pickAgendaDay(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDay,
+      firstDate: DateTime.now().subtract(const Duration(days: 730)),
+      lastDate: DateTime.now().add(const Duration(days: 730)),
+      locale: const Locale('it', 'IT'),
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDay = DateUtils.dateOnly(picked));
+    }
+  }
+
+  DateTime _suggestedStart(int? openingStartMinute, int? openingEndMinute) {
+    final now = DateTime.now().inStudioTimezone;
+    final today = _sameCalendarDay(_selectedDay, now);
+    var minute = openingStartMinute ?? 9 * 60;
+    if (today) minute = ((now.hour * 60 + now.minute + 29) ~/ 30) * 30;
+    if (openingStartMinute != null && minute < openingStartMinute) {
+      minute = openingStartMinute;
+    }
+    if (openingEndMinute != null && minute >= openingEndMinute) {
+      minute = openingEndMinute - 30;
+    }
+    final hour = minute ~/ 60;
+    final minuteOfHour = minute % 60;
+    return tz.TZDateTime(
+      tz.getLocation(AppConfig.timezone),
+      _selectedDay.year,
+      _selectedDay.month,
+      _selectedDay.day,
+      hour,
+      minuteOfHour,
+    );
+  }
+
+  ({int? start, int? end}) _openingWindow(Map<String, dynamic> config) {
+    final hours = Map<String, dynamic>.from(
+      config['openingHours'] as Map? ?? const {},
+    );
+    final rawDay = hours[_dayKeys[_selectedDay.weekday - 1]] as Map?;
+    if (rawDay == null) {
+      return _selectedDay.weekday == DateTime.sunday
+          ? (start: null, end: null)
+          : (start: 9 * 60, end: 18 * 60);
+    }
+    final day = Map<String, dynamic>.from(rawDay);
+    if ((day['enabled'] as bool?) != true) return (start: null, end: null);
+    return (
+      start: _minutes(day['open'] as String? ?? '09:00'),
+      end: _minutes(day['close'] as String? ?? '18:00'),
+    );
+  }
+
+  int _minutes(String value) {
+    final parts = value.split(':');
+    return (int.tryParse(parts.first) ?? 9) * 60 +
+        (parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0);
+  }
+
+  AdminAgendaRange get _agendaRange {
+    final location = tz.getLocation(AppConfig.timezone);
+    final start = tz.TZDateTime(
+      location,
+      _selectedDay.year,
+      _selectedDay.month,
+      _selectedDay.day,
+    );
+    final end = tz.TZDateTime(
+      location,
+      _selectedDay.year,
+      _selectedDay.month,
+      _selectedDay.day + 1,
+    );
+    return (startAt: start.toUtc(), endAt: end.toUtc());
+  }
+
+  Future<void> _openAppointment(Appointment item) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                item.clientName ?? 'Cliente',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 6),
+              Text(item.serviceName),
+              Text(item.effectiveStartAt.italianDateTime),
+              if (item.clientPhone case final phone?) Text(phone),
+              const SizedBox(height: 16),
+              AppointmentStatusChip(status: item.status),
+              if (item.status == AppointmentStatus.confirmed) ...[
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.edit_calendar_outlined),
+                  title: const Text('Sposta appuntamento'),
+                  onTap: () => Navigator.pop(sheetContext, 'reschedule'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.task_alt_outlined),
+                  title: const Text('Segna come completato'),
+                  onTap: () => Navigator.pop(sheetContext, 'complete'),
+                ),
+                ListTile(
+                  textColor: Theme.of(context).colorScheme.error,
+                  iconColor: Theme.of(context).colorScheme.error,
+                  leading: const Icon(Icons.cancel_outlined),
+                  title: const Text('Annulla appuntamento'),
+                  onTap: () => Navigator.pop(sheetContext, 'cancel'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    try {
+      if (action == 'reschedule') {
+        final startAt = await _pickDateTime(
+          context,
+          initial: item.confirmedStartAt,
+        );
+        if (startAt == null) return;
+        await ref
+            .read(appointmentRepositoryProvider)
+            .adminRescheduleAppointment(item.id, startAt);
+      } else if (action == 'cancel') {
+        await ref
+            .read(appointmentRepositoryProvider)
+            .cancelAppointment(item.id);
+      } else {
+        await ref
+            .read(appointmentRepositoryProvider)
+            .adminCompleteAppointment(item.id);
+      }
+      ref.invalidate(adminAppointmentsProvider);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Operazione non riuscita: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openBlock(AgendaBlock block) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Fascia bloccata',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
+              Text(block.reason),
+              const SizedBox(height: 6),
+              Text(
+                '${block.startAt.italianDateTime} – ${block.endAt.italianTime}',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final appointments = ref.watch(adminAppointmentsProvider);
+  Widget build(BuildContext context) {
+    final appointments = ref.watch(adminAgendaProvider(_agendaRange));
+    final blocks = ref.watch(adminBlocksProvider);
+    final studioConfig = ref.watch(studioConfigProvider).value ?? const {};
     ref.watch(clientsProvider);
     ref.watch(adminServicesProvider);
+    final opening = _openingWindow(studioConfig);
+    final startHour = opening.start == null || opening.start! ~/ 60 >= 8
+        ? 8
+        : opening.start! ~/ 60;
+    final closingHour = opening.end == null ? 20 : (opening.end! / 60).ceil();
+    final endHour = closingHour <= 20 ? 20 : closingHour;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(
           'Agenda',
-          subtitle: 'Appuntamenti confermati e blocchi manuali',
+          subtitle: 'Calendario giornaliero e gestione degli slot',
           actions: [
             FilledButton.tonalIcon(
-              onPressed: () => _createBlock(context, ref),
+              onPressed: () => _createBlock(
+                context,
+                initialStartAt: _suggestedStart(opening.start, opening.end),
+              ),
               icon: const Icon(Icons.block_outlined),
               label: const Text('Blocca fascia'),
             ),
             FilledButton.icon(
-              onPressed: () => _manualAppointment(context, ref),
+              onPressed: () => _manualAppointment(
+                context,
+                initialStartAt: _suggestedStart(opening.start, opening.end),
+              ),
               icon: const Icon(Icons.add),
               label: const Text('Nuovo'),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        _AgendaDateToolbar(
+          day: _selectedDay,
+          onPrevious: () => setState(
+            () => _selectedDay = _selectedDay.subtract(const Duration(days: 1)),
+          ),
+          onNext: () => setState(
+            () => _selectedDay = _selectedDay.add(const Duration(days: 1)),
+          ),
+          onPickDate: () => _pickAgendaDay(context),
+          onToday: () {
+            final today = DateTime.now().inStudioTimezone;
+            setState(
+              () => _selectedDay = DateTime(today.year, today.month, today.day),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        const _AgendaLegend(),
+        const SizedBox(height: 10),
         Expanded(
           child: AsyncValueView<List<Appointment>>(
             value: appointments,
+            onRetry: () => ref.invalidate(adminAgendaProvider(_agendaRange)),
             data: (items) {
-              final confirmed =
+              final calendarItems =
                   items
                       .where(
                         (item) =>
-                            item.status == AppointmentStatus.confirmed &&
-                            item.effectiveEndAt.isAfter(DateTime.now().toUtc()),
+                            item.status == AppointmentStatus.confirmed ||
+                            item.status == AppointmentStatus.completed,
                       )
                       .toList()
                     ..sort(
                       (a, b) =>
                           a.effectiveStartAt.compareTo(b.effectiveStartAt),
                     );
-              if (confirmed.isEmpty) {
-                return const _AdminEmptyState(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Agenda libera',
-                  message: 'Non ci sono appuntamenti confermati in arrivo.',
-                );
-              }
-              return ListView.separated(
-                itemCount: confirmed.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final item = confirmed[index];
-                  return _AdminAgendaCard(
-                    appointment: item,
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (action) async {
-                        try {
-                          if (action == 'reschedule') {
-                            final startAt = await _pickDateTime(
-                              context,
-                              initial: item.confirmedStartAt,
-                            );
-                            if (startAt == null) return;
-                            await ref
-                                .read(appointmentRepositoryProvider)
-                                .adminRescheduleAppointment(item.id, startAt);
-                          } else if (action == 'cancel') {
-                            await ref
-                                .read(appointmentRepositoryProvider)
-                                .cancelAppointment(item.id);
-                          } else {
-                            await ref
-                                .read(appointmentRepositoryProvider)
-                                .adminCompleteAppointment(item.id);
-                          }
-                          ref.invalidate(adminAppointmentsProvider);
-                        } catch (error) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Operazione non riuscita: $error',
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      itemBuilder: (context) => const [
-                        PopupMenuItem(
-                          value: 'reschedule',
-                          child: Text('Sposta appuntamento'),
-                        ),
-                        PopupMenuItem(
-                          value: 'complete',
-                          child: Text('Completato'),
-                        ),
-                        PopupMenuItem(value: 'cancel', child: Text('Annulla')),
-                      ],
-                    ),
-                  );
-                },
+              return AsyncValueView<List<AgendaBlock>>(
+                value: blocks,
+                onRetry: () => ref.invalidate(adminBlocksProvider),
+                data: (dayBlocks) => AdminDayCalendar(
+                  day: _selectedDay,
+                  appointments: calendarItems,
+                  blocks: dayBlocks,
+                  startHour: startHour,
+                  endHour: endHour,
+                  openingStartMinute: opening.start,
+                  openingEndMinute: opening.end,
+                  onEmptySlotTap: (startAt) =>
+                      _manualAppointment(context, initialStartAt: startAt),
+                  onAppointmentTap: _openAppointment,
+                  onBlockTap: _openBlock,
+                ),
               );
             },
           ),
@@ -1091,6 +1232,136 @@ class _AgendaSection extends ConsumerWidget {
     );
   }
 }
+
+class _AgendaDateToolbar extends StatelessWidget {
+  const _AgendaDateToolbar({
+    required this.day,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onPickDate,
+    required this.onToday,
+  });
+
+  final DateTime day;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final VoidCallback onPickDate;
+  final VoidCallback onToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final formatted = DateFormat('EEEE d MMMM yyyy', 'it_IT').format(day);
+    final label = formatted.isEmpty
+        ? formatted
+        : '${formatted[0].toUpperCase()}${formatted.substring(1)}';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        child: Row(
+          children: [
+            IconButton(
+              tooltip: 'Giorno precedente',
+              onPressed: onPrevious,
+              icon: const Icon(Icons.chevron_left_rounded),
+            ),
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: onPickDate,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Giorno successivo',
+              onPressed: onNext,
+              icon: const Icon(Icons.chevron_right_rounded),
+            ),
+            IconButton(
+              tooltip: 'Vai a oggi',
+              onPressed: onToday,
+              icon: const Icon(Icons.today_outlined),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AgendaLegend extends StatelessWidget {
+  const _AgendaLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Wrap(
+      spacing: 14,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _LegendItem(color: theme.colorScheme.primary, label: 'Appuntamento'),
+        _LegendItem(color: theme.colorScheme.outline, label: 'Blocco'),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.touch_app_outlined,
+              size: 16,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'Tocca uno slot libero per prenotare',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    );
+  }
+}
+
+bool _sameCalendarDay(DateTime first, DateTime second) =>
+    first.year == second.year &&
+    first.month == second.month &&
+    first.day == second.day;
 
 class _ClientsSection extends ConsumerStatefulWidget {
   const _ClientsSection();
@@ -1728,7 +1999,14 @@ Future<DateTime?> _pickDateTime(
     ),
   );
   if (time == null) return null;
-  return DateTime(day.year, day.month, day.day, time.hour, time.minute);
+  return tz.TZDateTime(
+    tz.getLocation(AppConfig.timezone),
+    day.year,
+    day.month,
+    day.day,
+    time.hour,
+    time.minute,
+  );
 }
 
 TimeOfDay _parseTime(String value) {

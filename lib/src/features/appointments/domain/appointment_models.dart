@@ -153,6 +153,36 @@ class AvailabilitySlot {
   final DateTime endAt;
 }
 
+class AgendaBlock {
+  const AgendaBlock({
+    required this.id,
+    required this.startAt,
+    required this.endAt,
+    required this.reason,
+    required this.active,
+  });
+
+  factory AgendaBlock.fromDocument(
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data() ?? const <String, dynamic>{};
+    final startAt = _date(data['startAt']) ?? DateTime.now().toUtc();
+    return AgendaBlock(
+      id: document.id,
+      startAt: startAt,
+      endAt: _date(data['endAt']) ?? startAt,
+      reason: data['reason'] as String? ?? 'Fascia bloccata',
+      active: data['active'] as bool? ?? true,
+    );
+  }
+
+  final String id;
+  final DateTime startAt;
+  final DateTime endAt;
+  final String reason;
+  final bool active;
+}
+
 bool canTransition(AppointmentStatus from, AppointmentStatus to) {
   const transitions = <AppointmentStatus, Set<AppointmentStatus>>{
     AppointmentStatus.pendingAdmin: {

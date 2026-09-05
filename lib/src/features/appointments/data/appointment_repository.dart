@@ -48,6 +48,48 @@ class AppointmentRepository {
         );
   }
 
+  Stream<List<Appointment>> watchAdminAgenda({
+    required DateTime startAt,
+    required DateTime endAt,
+  }) {
+    return _firestore
+        .collection('appointments')
+        .where(
+          'confirmedStartAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startAt.toUtc()),
+        )
+        .where(
+          'confirmedStartAt',
+          isLessThan: Timestamp.fromDate(endAt.toUtc()),
+        )
+        .orderBy('confirmedStartAt')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map(Appointment.fromDocument).toList(),
+        );
+  }
+
+  Stream<List<AgendaBlock>> watchAdminBlocks() {
+    return _firestore
+        .collection('blocks')
+        .where('active', isEqualTo: true)
+        .limit(250)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map(AgendaBlock.fromDocument).toList()
+                ..sort((a, b) => a.startAt.compareTo(b.startAt)),
+        );
+  }
+
+  Stream<Map<String, dynamic>> watchStudioConfig() {
+    return _firestore
+        .collection('studio')
+        .doc('config')
+        .snapshots()
+        .map((snapshot) => snapshot.data() ?? const <String, dynamic>{});
+  }
+
   Stream<List<Map<String, dynamic>>> watchClients() {
     return _firestore
         .collection('users')

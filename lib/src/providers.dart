@@ -46,6 +46,23 @@ final adminAppointmentsProvider = StreamProvider<List<Appointment>>((ref) {
   return ref.watch(appointmentRepositoryProvider).watchAdminAppointments();
 });
 
+typedef AdminAgendaRange = ({DateTime startAt, DateTime endAt});
+
+final adminAgendaProvider = StreamProvider.autoDispose
+    .family<List<Appointment>, AdminAgendaRange>((ref, range) {
+      return ref
+          .watch(appointmentRepositoryProvider)
+          .watchAdminAgenda(startAt: range.startAt, endAt: range.endAt);
+    });
+
+final adminBlocksProvider = StreamProvider<List<AgendaBlock>>((ref) {
+  return ref.watch(appointmentRepositoryProvider).watchAdminBlocks();
+});
+
+final studioConfigProvider = StreamProvider<Map<String, dynamic>>((ref) {
+  return ref.watch(appointmentRepositoryProvider).watchStudioConfig();
+});
+
 final clientsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(appointmentRepositoryProvider).watchClients();
 });
