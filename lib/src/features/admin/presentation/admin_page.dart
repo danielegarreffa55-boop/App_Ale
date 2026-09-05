@@ -6,10 +6,12 @@ import 'package:intl/intl.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_strings.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_time_x.dart';
 import '../../../providers.dart';
 import '../../../shared/appointment_card.dart';
 import '../../../shared/async_value_view.dart';
+import '../../../shared/brand_logo.dart';
 import '../../appointments/domain/appointment_models.dart';
 
 class AdminPage extends ConsumerStatefulWidget {
@@ -63,7 +65,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
         };
         return Scaffold(
           appBar: AppBar(
-            title: Text('${AppConfig.studioName} · Admin'),
+            title: const BrandWordmark(),
             actions: [
               IconButton(
                 tooltip: 'Esci',
@@ -85,7 +87,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                     Navigator.pop(context);
                   },
                   children: [
-                    const SizedBox(height: 16),
+                    const _AdminDrawerHeader(),
                     for (var index = 0; index < _labels.length; index++)
                       NavigationDrawerDestination(
                         icon: Icon(_icons[index]),
@@ -115,15 +117,44 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                 const VerticalDivider(width: 1),
               ],
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: content,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1440),
+                    child: Padding(
+                      padding: EdgeInsets.all(wide ? 24 : 12),
+                      child: content,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _AdminDrawerHeader extends StatelessWidget {
+  const _AdminDrawerHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 28, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const BrandWordmark(),
+          const SizedBox(height: 10),
+          Text(
+            'Console amministratore',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppTheme.champagne.withValues(alpha: 0.72)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -171,20 +202,346 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final theme = Theme.of(context);
+    final heading = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
+        Text(
+          title,
+          style: theme.textTheme.displaySmall?.copyWith(fontSize: 32),
+        ),
+        if (subtitle case final subtitle?) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+            ),
+          ),
+        ],
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 720) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              heading,
+              if (actions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Wrap(spacing: 8, runSpacing: 8, children: actions),
+              ],
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: heading),
+            if (actions.isNotEmpty)
+              Wrap(spacing: 8, runSpacing: 8, children: actions),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AdminEmptyState extends StatelessWidget {
+  const _AdminEmptyState({
+    required this.icon,
+    required this.title,
+    this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: theme.colorScheme.primary, size: 28),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge,
+                ),
+                if (message case final message?) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.65,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final int value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: theme.colorScheme.primary, size: 22),
+                ),
+                const Spacer(),
+                Text(
+                  '$value',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelLarge,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminAgendaCard extends StatelessWidget {
+  const _AdminAgendaCard({required this.appointment, required this.trailing});
+
+  final Appointment appointment;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appointment.clientName ?? 'Cliente',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      if (appointment.clientPhone case final phone?) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          phone,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.64,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                trailing,
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(appointment.serviceName, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 19,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(appointment.effectiveStartAt.italianDateTime),
+                  ],
+                ),
+                AppointmentStatusChip(status: appointment.status),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminListCard extends StatelessWidget {
+  const _AdminListCard({
+    required this.icon,
+    required this.title,
+    this.details = const [],
+    this.badge,
+    this.badgeActive = true,
+    this.trailing,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final List<String> details;
+  final String? badge;
+  final bool badgeActive;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: Theme.of(context).textTheme.displaySmall),
-              if (subtitle case final subtitle?) Text(subtitle),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: theme.colorScheme.primary),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.textTheme.titleMedium),
+                    for (final detail in details.where(
+                      (item) => item.isNotEmpty,
+                    ))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          detail,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.68,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (badge case final badge?) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              (badgeActive
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface)
+                                  .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color:
+                                (badgeActive
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.onSurface)
+                                    .withValues(alpha: 0.24),
+                          ),
+                        ),
+                        child: Text(
+                          badge,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: badgeActive
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.62,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing case final trailing?) ...[
+                const SizedBox(width: 8),
+                trailing,
+              ],
             ],
           ),
         ),
-        ...actions,
-      ],
+      ),
     );
   }
 }
@@ -258,6 +615,13 @@ class _DashboardSection extends ConsumerWidget {
                   Icons.event_outlined,
                 ),
                 ('Clienti', clients.value?.length ?? 0, Icons.people_outline),
+                (
+                  'Completati',
+                  items
+                      .where((a) => a.status == AppointmentStatus.completed)
+                      .length,
+                  Icons.task_alt_outlined,
+                ),
               ];
               final upcoming =
                   items
@@ -273,40 +637,36 @@ class _DashboardSection extends ConsumerWidget {
                     );
               return ListView(
                 children: [
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: metrics
-                        .map(
-                          (metric) => SizedBox(
-                            width: 210,
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Row(
-                                  children: [
-                                    Icon(metric.$3, size: 30),
-                                    const SizedBox(width: 14),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '${metric.$2}',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headlineMedium,
-                                        ),
-                                        Text(metric.$1),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      final columns = width >= 1080
+                          ? 5
+                          : width >= 760
+                          ? 4
+                          : width >= 520
+                          ? 3
+                          : 2;
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: metrics.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: width < 520 ? 1.4 : 1.5,
+                        ),
+                        itemBuilder: (context, index) {
+                          final metric = metrics[index];
+                          return _MetricCard(
+                            label: metric.$1,
+                            value: metric.$2,
+                            icon: metric.$3,
+                          );
+                        },
+                      );
+                    },
                   ),
                   const SizedBox(height: 28),
                   Text(
@@ -315,7 +675,11 @@ class _DashboardSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   if (upcoming.isEmpty)
-                    const Text('Nessun appuntamento confermato.')
+                    const _AdminEmptyState(
+                      icon: Icons.event_available_outlined,
+                      title: 'Agenda libera',
+                      message: 'Nessun appuntamento confermato in arrivo.',
+                    )
                   else
                     ...upcoming
                         .take(8)
@@ -423,8 +787,10 @@ class _RequestsSection extends ConsumerWidget {
                   )
                   .toList();
               if (requests.isEmpty) {
-                return const Center(
-                  child: Text('Nessuna richiesta da gestire.'),
+                return const _AdminEmptyState(
+                  icon: Icons.inbox_outlined,
+                  title: 'Tutto sotto controllo',
+                  message: 'Non ci sono richieste da gestire.',
                 );
               }
               return ListView.separated(
@@ -630,7 +996,6 @@ class _AgendaSection extends ConsumerWidget {
               icon: const Icon(Icons.block_outlined),
               label: const Text('Blocca fascia'),
             ),
-            const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: () => _manualAppointment(context, ref),
               icon: const Icon(Icons.add),
@@ -656,7 +1021,11 @@ class _AgendaSection extends ConsumerWidget {
                           a.effectiveStartAt.compareTo(b.effectiveStartAt),
                     );
               if (confirmed.isEmpty) {
-                return const Center(child: Text('Agenda libera.'));
+                return const _AdminEmptyState(
+                  icon: Icons.calendar_today_outlined,
+                  title: 'Agenda libera',
+                  message: 'Non ci sono appuntamenti confermati in arrivo.',
+                );
               }
               return ListView.separated(
                 itemCount: confirmed.length,
@@ -664,7 +1033,7 @@ class _AgendaSection extends ConsumerWidget {
                     const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final item = confirmed[index];
-                  return AppointmentCard(
+                  return _AdminAgendaCard(
                     appointment: item,
                     trailing: PopupMenuButton<String>(
                       onSelected: (action) async {
@@ -766,6 +1135,15 @@ class _ClientsSectionState extends ConsumerState<_ClientsSection> {
                 ].join(' ').toLowerCase();
                 return haystack.contains(_query);
               }).toList();
+              if (filtered.isEmpty) {
+                return _AdminEmptyState(
+                  icon: Icons.person_search_outlined,
+                  title: _query.isEmpty ? 'Nessun cliente' : 'Nessun risultato',
+                  message: _query.isEmpty
+                      ? 'I nuovi clienti compariranno qui.'
+                      : 'Prova con un nome, un telefono o un’email diversi.',
+                );
+              }
               return ListView.separated(
                 itemCount: filtered.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 8),
@@ -778,19 +1156,17 @@ class _ClientsSectionState extends ConsumerState<_ClientsSection> {
                             item.status == AppointmentStatus.completed,
                       )
                       .length;
-                  return Card(
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.person_outline),
-                      ),
-                      title: Text(
-                        '${client['firstName'] ?? ''} ${client['lastName'] ?? ''}',
-                      ),
-                      subtitle: Text(
-                        '${client['phone'] ?? ''} · ${client['email'] ?? ''}',
-                      ),
-                      trailing: Text('$visits visite'),
-                    ),
+                  final name =
+                      '${client['firstName'] ?? ''} ${client['lastName'] ?? ''}'
+                          .trim();
+                  return _AdminListCard(
+                    icon: Icons.person_outline,
+                    title: name.isEmpty ? 'Cliente' : name,
+                    details: [
+                      '${client['phone'] ?? ''}',
+                      '${client['email'] ?? ''}',
+                    ],
+                    badge: visits == 1 ? '1 visita' : '$visits visite',
                   );
                 },
               );
@@ -953,34 +1329,47 @@ class _ServicesSection extends ConsumerWidget {
         Expanded(
           child: AsyncValueView<List<SalonService>>(
             value: services,
-            data: (items) => ListView.separated(
-              itemCount: items.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final service = items[index];
-                final price = service.priceCents == null
-                    ? 'Prezzo su richiesta'
-                    : NumberFormat.simpleCurrency(locale: 'it_IT')
-                          .format(service.priceCents! / 100);
-                return Card(
-                  child: ListTile(
-                    leading: Icon(
-                      service.active
-                          ? Icons.check_circle_outline
-                          : Icons.hide_source,
-                    ),
-                    title: Text(service.name),
-                    subtitle: Text(
-                      '${service.durationMinutes} min + ${service.bufferMinutes} buffer · $price',
-                    ),
+            data: (items) {
+              if (items.isEmpty) {
+                return const _AdminEmptyState(
+                  icon: Icons.content_cut_outlined,
+                  title: 'Nessun servizio',
+                  message: 'Crea il primo servizio prenotabile.',
+                );
+              }
+              return ListView.separated(
+                itemCount: items.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final service = items[index];
+                  final price = service.priceCents == null
+                      ? 'Prezzo su richiesta'
+                      : NumberFormat.simpleCurrency(locale: 'it_IT')
+                            .format(service.priceCents! / 100);
+                  final timing = service.bufferMinutes > 0
+                      ? '${service.durationMinutes} min · ${service.bufferMinutes} min di pausa'
+                      : '${service.durationMinutes} min';
+                  return _AdminListCard(
+                    icon: service.active
+                        ? Icons.content_cut_outlined
+                        : Icons.hide_source_outlined,
+                    title: service.name,
+                    details: [
+                      if (service.description.trim().isNotEmpty)
+                        service.description,
+                      '$timing · $price',
+                    ],
+                    badge: service.active ? 'Prenotabile' : 'Nascosto',
+                    badgeActive: service.active,
                     trailing: IconButton(
+                      tooltip: 'Modifica servizio',
                       onPressed: () => _edit(context, ref, service),
                       icon: const Icon(Icons.edit_outlined),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              );
+            },
           ),
         ),
       ],
@@ -1105,28 +1494,21 @@ class _HoursSection extends StatelessWidget {
                   final enabled = day['enabled'] as bool? ?? false;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Card(
-                      child: ListTile(
-                        leading: Icon(
-                          enabled
-                              ? Icons.wb_sunny_outlined
-                              : Icons.nightlight_outlined,
-                        ),
-                        title: Text(entry.value),
-                        subtitle: Text(
-                          enabled
-                              ? '${day['open'] ?? '09:00'} – ${day['close'] ?? '18:00'}'
-                              : 'Chiuso',
-                        ),
-                        trailing: const Icon(Icons.edit_outlined),
-                        onTap: () => _editDay(
-                          context,
-                          entry.key,
-                          entry.value,
-                          day,
-                          hours,
-                        ),
-                      ),
+                    child: _AdminListCard(
+                      icon: enabled
+                          ? Icons.wb_sunny_outlined
+                          : Icons.nightlight_outlined,
+                      title: entry.value,
+                      details: [
+                        enabled
+                            ? '${day['open'] ?? '09:00'} – ${day['close'] ?? '18:00'}'
+                            : 'Nessun orario configurato',
+                      ],
+                      badge: enabled ? 'Aperto' : 'Chiuso',
+                      badgeActive: enabled,
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () =>
+                          _editDay(context, entry.key, entry.value, day, hours),
                     ),
                   );
                 }).toList(),
@@ -1212,57 +1594,71 @@ class _SettingsSectionState extends State<_SettingsSection> {
               subtitle: 'Brand, contatti e promemoria',
             ),
             const SizedBox(height: 20),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 700),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: _studioName,
-                        decoration: const InputDecoration(
-                          labelText: 'Nome studio',
+            Align(
+              alignment: Alignment.topLeft,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Dati dello studio',
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _email,
-                        decoration: const InputDecoration(
-                          labelText: 'Email supporto',
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _studioName,
+                          decoration: const InputDecoration(
+                            labelText: 'Nome studio',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Telefono',
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _email,
+                          decoration: const InputDecoration(
+                            labelText: 'Email supporto',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _address,
-                        decoration: const InputDecoration(
-                          labelText: 'Indirizzo',
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Telefono',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _reminder,
-                        decoration: const InputDecoration(
-                          labelText: 'Promemoria giorno prima (HH:mm)',
-                          helperText: 'Timezone Europe/Rome',
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _address,
+                          decoration: const InputDecoration(
+                            labelText: 'Indirizzo',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Automazioni',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _reminder,
+                          decoration: const InputDecoration(
+                            labelText: 'Promemoria giorno prima (HH:mm)',
+                            helperText: 'Timezone Europe/Rome',
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
                           onPressed: _save,
-                          child: const Text(AppStrings.save),
+                          icon: const Icon(Icons.save_outlined),
+                          label: const Text(AppStrings.save),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

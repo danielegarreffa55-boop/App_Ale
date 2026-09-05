@@ -143,25 +143,32 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(20, keyboardVisible ? 8 : 24, 20, 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
                 children: [
-                  const BrandLogo(),
-                  const SizedBox(height: 16),
-                  Text(
-                    _register ? 'Crea il tuo profilo cliente' : 'Bentornato. Il tuo prossimo appuntamento ti aspetta.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
+                  if (keyboardVisible) ...[
+                    const BrandWordmark(),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    const BrandLogo(),
+                    const SizedBox(height: 16),
+                    Text(
+                      _register ? 'Crea il tuo profilo cliente' : 'Bentornato. Il tuo prossimo appuntamento ti aspetta.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 28),
+                  ],
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(keyboardVisible ? 18 : 24),
                       child: Form(
                         key: _formKey,
                         child: AutofillGroup(
@@ -234,6 +241,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                       : 'Inserisci un indirizzo email valido';
                                 },
                                 keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
                                 autofillHints: const [AutofillHints.email],
                                 decoration: const InputDecoration(
                                   labelText: AppStrings.email,
@@ -253,6 +261,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                   return null;
                                 },
                                 obscureText: _obscurePassword,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) {
+                                  if (!_busy) _submit();
+                                },
                                 autofillHints: [
                                   _register
                                       ? AutofillHints.newPassword

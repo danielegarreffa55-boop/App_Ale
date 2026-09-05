@@ -29,12 +29,13 @@ class BrandWordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    final color = Theme.of(context).colorScheme.primary;
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.content_cut_rounded, size: 20),
-        SizedBox(width: 10),
-        Text('BARBATUM'),
+        Icon(Icons.content_cut_rounded, size: 20, color: color),
+        const SizedBox(width: 10),
+        Text('BARBATUM', style: TextStyle(color: color)),
       ],
     );
   }
