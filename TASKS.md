@@ -20,7 +20,8 @@ Aggiornato: 31 agosto 2026.
 
 ## TODO
 
-- [ ] Sostituire brand placeholder, logo, icone e screenshot con asset approvati dal titolare.
+- [x] Applicare brand Barbatum, palette nero/oro e tipografia Cinzel.
+- [ ] Sostituire la variante raster con il file logo originale ad alta risoluzione/SVG e generare icone e screenshot store approvati.
 - [ ] Eseguire UAT con dati reali dello studio e almeno due dispositivi fisici.
 - [ ] Far revisionare Privacy Policy, termini e strategia di conservazione da un professionista.
 - [ ] TestFlight, closed testing Play e verifica accessibilità con utenti reali.

@@ -116,7 +116,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                   style: Theme.of(context).textTheme.displaySmall,
                 ),
                 const SizedBox(height: 8),
-                const Text('1. Scegli il servizio'),
+                Text(
+                  'Scegli il servizio',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 16),
                 AsyncValueView<List<SalonService>>(
                   value: services,
@@ -132,78 +135,92 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                         ),
                       );
                     }
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: items.map((service) {
-                        final selected = service.id == _service?.id;
-                        final price = service.priceCents == null
-                            ? null
-                            : NumberFormat.simpleCurrency(locale: 'it_IT')
-                                  .format(service.priceCents! / 100);
-                        return SizedBox(
-                          width: 280,
-                          child: Card(
-                            color: selected
-                                ? Theme.of(context)
-                                      .colorScheme
-                                      .secondaryContainer
-                                : null,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(24),
-                              onTap: () {
-                                _service = service;
-                                _loadSlots();
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final cardWidth = constraints.maxWidth < 640
+                            ? constraints.maxWidth
+                            : 280.0;
+                        return Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: items.map((service) {
+                            final selected = service.id == _service?.id;
+                            final price = service.priceCents == null
+                                ? null
+                                : NumberFormat.simpleCurrency(locale: 'it_IT')
+                                      .format(service.priceCents! / 100);
+                            return SizedBox(
+                              width: cardWidth,
+                              child: Card(
+                                color: selected
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .secondaryContainer
+                                    : null,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(24),
+                                  onTap: () {
+                                    _service = service;
+                                    _loadSlots();
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            service.name,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleLarge,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                service.name,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleLarge,
+                                              ),
+                                            ),
+                                            if (selected)
+                                              const Icon(
+                                                Icons.check_circle_rounded,
+                                              ),
+                                          ],
                                         ),
-                                        if (selected)
-                                          const Icon(
-                                            Icons.check_circle_rounded,
-                                          ),
+                                        if (service.description.isNotEmpty) ...[
+                                          const SizedBox(height: 6),
+                                          Text(service.description),
+                                        ],
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          '${service.durationMinutes} min'
+                                          '${price == null ? '' : ' · $price'}',
+                                        ),
                                       ],
                                     ),
-                                    if (service.description.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text(service.description),
-                                    ],
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      '${service.durationMinutes} min'
-                                      '${price == null ? '' : ' · $price'}',
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
+                            );
+                          }).toList(),
                         );
-                      }).toList(),
+                      },
                     );
                   },
                 ),
                 if (_service != null) ...[
                   const SizedBox(height: 32),
-                  const Text('2. Scegli giorno e orario'),
+                  Text(
+                    'Scegli giorno e orario',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _pickDay,
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    label: Text(
-                      DateFormat('EEEE d MMMM', 'it_IT').format(_day),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickDay,
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      label: Text(
+                        DateFormat('EEEE d MMMM', 'it_IT').format(_day),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -217,14 +234,25 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                           );
                         }
                         if (snapshot.hasError) {
-                          return Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.cloud_off_outlined),
-                              title: const Text('Orari non disponibili'),
-                              subtitle: Text('${snapshot.error}'),
-                              trailing: IconButton(
-                                onPressed: _loadSlots,
-                                icon: const Icon(Icons.refresh),
+                          debugPrint(
+                            'Caricamento disponibilitÃ  non riuscito: '
+                            '${snapshot.error}',
+                          );
+                          return SizedBox(
+                            width: double.infinity,
+                            child: Card(
+                              child: ListTile(
+                                leading: const Icon(Icons.cloud_off_outlined),
+                                title: const Text('Orari non disponibili'),
+                                subtitle: const Text(
+                                  'Non riusciamo a caricare gli orari. '
+                                  'Controlla la connessione e riprova.',
+                                ),
+                                trailing: IconButton(
+                                  tooltip: 'Riprova',
+                                  onPressed: _loadSlots,
+                                  icon: const Icon(Icons.refresh),
+                                ),
                               ),
                             ),
                           );

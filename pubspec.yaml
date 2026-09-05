@@ -1,5 +1,5 @@
 name: salon_booking
-description: "Prenotazioni premium per salone"
+description: "Prenotazioni Barbatum Barberia Sartoriale"
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -35,3 +35,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/branding/barbatum_logo.png
+  fonts:
+    - family: Cinzel
+      fonts:
+        - asset: assets/fonts/Cinzel-Variable.ttf

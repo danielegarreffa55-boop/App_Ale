@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/l10n/app_strings.dart';
 import '../../../providers.dart';
+import '../../../shared/brand_logo.dart';
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({this.checkExistingSession = true, super.key});
@@ -152,13 +152,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
                 children: [
-                  const Icon(Icons.content_cut_rounded, size: 52),
-                  const SizedBox(height: 12),
-                  Text(
-                    AppConfig.appName,
-                    style: Theme.of(context).textTheme.displaySmall,
-                  ),
-                  const SizedBox(height: 8),
+                  const BrandLogo(),
+                  const SizedBox(height: 16),
                   Text(
                     _register ? 'Crea il tuo profilo cliente' : 'Bentornato. Il tuo prossimo appuntamento ti aspetta.',
                     textAlign: TextAlign.center,

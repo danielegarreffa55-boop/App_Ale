@@ -12,7 +12,7 @@ abstract final class AppStrings {
       'Ho letto e accetto l\u2019informativa privacy.';
   static const home = 'Home';
   static const book = 'Prenota';
-  static const appointments = 'I miei appuntamenti';
+  static const appointments = 'Appuntamenti';
   static const profile = 'Profilo';
   static const retry = 'Riprova';
   static const cancel = 'Annulla';

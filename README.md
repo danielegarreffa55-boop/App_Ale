@@ -1,4 +1,4 @@
-# Atelier — prenotazioni salone
+# Barbatum — Barberia Sartoriale
 
 Applicazione Flutter per iOS, Android e Web con interfaccia cliente, dashboard amministratore responsive e backend Firebase. `salon_booking` è soltanto il nome tecnico; brand, contatti, colori e identificatori di pubblicazione sono sostituibili.
 

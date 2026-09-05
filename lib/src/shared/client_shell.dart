@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/config/app_config.dart';
 import '../core/l10n/app_strings.dart';
+import 'brand_logo.dart';
 
 class ClientShell extends StatelessWidget {
   const ClientShell({required this.child, super.key});
@@ -36,7 +36,7 @@ class ClientShell extends StatelessWidget {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     if (wide) {
       return Scaffold(
-        appBar: AppBar(title: Text(AppConfig.appName)),
+        appBar: AppBar(title: const BrandWordmark()),
         body: Row(
           children: [
             NavigationRail(
@@ -59,7 +59,7 @@ class ClientShell extends StatelessWidget {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: Text(AppConfig.appName)),
+      appBar: AppBar(title: const BrandWordmark()),
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selected,

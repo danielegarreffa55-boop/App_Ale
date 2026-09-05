@@ -4,11 +4,11 @@ import 'package:flutter/foundation.dart';
 abstract final class AppConfig {
   static const studioName = String.fromEnvironment(
     'STUDIO_NAME',
-    defaultValue: 'Atelier Studio',
+    defaultValue: 'Barbatum Barberia Sartoriale',
   );
   static const appName = String.fromEnvironment(
     'APP_NAME',
-    defaultValue: 'Atelier',
+    defaultValue: 'Barbatum',
   );
   static const supportEmail = String.fromEnvironment(
     'SUPPORT_EMAIL',
