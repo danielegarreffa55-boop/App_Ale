@@ -25,6 +25,7 @@ class AdminPage extends ConsumerStatefulWidget {
 
 class _AdminPageState extends ConsumerState<AdminPage> {
   var _selected = 0;
+  var _agendaInitialDayOffset = 0;
 
   static const _labels = [
     'Dashboard',
@@ -45,6 +46,13 @@ class _AdminPageState extends ConsumerState<AdminPage> {
     Icons.settings_outlined,
   ];
 
+  void _selectSection(int index, {int agendaDayOffset = 0}) {
+    setState(() {
+      _selected = index;
+      if (index == 2) _agendaInitialDayOffset = agendaDayOffset;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final admin = ref.watch(isAdminProvider);
@@ -57,9 +65,15 @@ class _AdminPageState extends ConsumerState<AdminPage> {
         final width = MediaQuery.sizeOf(context).width;
         final wide = width >= 980;
         final content = switch (_selected) {
-          0 => const _DashboardSection(),
+          0 => _DashboardSection(
+            onNavigate: (section, agendaDayOffset) =>
+                _selectSection(section, agendaDayOffset: agendaDayOffset),
+          ),
           1 => const _RequestsSection(),
-          2 => const _AgendaSection(),
+          2 => _AgendaSection(
+            key: ValueKey(_agendaInitialDayOffset),
+            initialDayOffset: _agendaInitialDayOffset,
+          ),
           3 => const _ClientsSection(),
           4 => const _ServicesSection(),
           5 => const _HoursSection(),
@@ -85,7 +99,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
               : NavigationDrawer(
                   selectedIndex: _selected,
                   onDestinationSelected: (index) {
-                    setState(() => _selected = index);
+                    _selectSection(index);
                     Navigator.pop(context);
                   },
                   children: [
@@ -106,8 +120,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                   labelType: width >= 1220
                       ? NavigationRailLabelType.none
                       : null,
-                  onDestinationSelected: (index) =>
-                      setState(() => _selected = index),
+                  onDestinationSelected: _selectSection,
                   destinations: [
                     for (var index = 0; index < _labels.length; index++)
                       NavigationRailDestination(
@@ -153,7 +166,7 @@ class _AdminDrawerHeader extends StatelessWidget {
           Text(
             'Console amministratore',
             style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppTheme.champagne.withValues(alpha: 0.72)),
+                ?.copyWith(color: AppTheme.ink.withValues(alpha: 0.62)),
           ),
         ],
       ),
@@ -314,50 +327,72 @@ class _MetricCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    required this.onTap,
   });
 
   final String label;
   final int value;
   final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: theme.colorScheme.primary,
+                      size: 22,
+                    ),
                   ),
-                  child: Icon(icon, color: theme.colorScheme.primary, size: 22),
-                ),
-                const Spacer(),
-                Text(
-                  '$value',
-                  style: theme.textTheme.headlineMedium?.copyWith(
+                  const Spacer(),
+                  Text(
+                    '$value',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 17,
                     color: theme.colorScheme.primary,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelLarge,
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -476,7 +511,9 @@ class _AdminListCard extends StatelessWidget {
 }
 
 class _DashboardSection extends ConsumerWidget {
-  const _DashboardSection();
+  const _DashboardSection({required this.onNavigate});
+
+  final void Function(int section, int agendaDayOffset) onNavigate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -511,6 +548,8 @@ class _DashboardSection extends ConsumerWidget {
                       .where((a) => a.status == AppointmentStatus.pendingAdmin)
                       .length,
                   Icons.mark_email_unread_outlined,
+                  1,
+                  0,
                 ),
                 (
                   'Controproposte',
@@ -520,6 +559,8 @@ class _DashboardSection extends ConsumerWidget {
                       )
                       .length,
                   Icons.swap_horiz_rounded,
+                  1,
+                  0,
                 ),
                 (
                   'Oggi',
@@ -531,6 +572,8 @@ class _DashboardSection extends ConsumerWidget {
                       )
                       .length,
                   Icons.today_outlined,
+                  2,
+                  0,
                 ),
                 (
                   'Domani',
@@ -542,14 +585,24 @@ class _DashboardSection extends ConsumerWidget {
                       )
                       .length,
                   Icons.event_outlined,
+                  2,
+                  1,
                 ),
-                ('Clienti', clients.value?.length ?? 0, Icons.people_outline),
+                (
+                  'Clienti',
+                  clients.value?.length ?? 0,
+                  Icons.people_outline,
+                  3,
+                  0,
+                ),
                 (
                   'Completati',
                   items
                       .where((a) => a.status == AppointmentStatus.completed)
                       .length,
                   Icons.task_alt_outlined,
+                  2,
+                  0,
                 ),
               ];
               final upcoming =
@@ -592,15 +645,27 @@ class _DashboardSection extends ConsumerWidget {
                             label: metric.$1,
                             value: metric.$2,
                             icon: metric.$3,
+                            onTap: () => onNavigate(metric.$4, metric.$5),
                           );
                         },
                       );
                     },
                   ),
                   const SizedBox(height: 28),
-                  Text(
-                    'Prossimi appuntamenti',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Prossimi appuntamenti',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => onNavigate(2, 0),
+                        icon: const Icon(Icons.calendar_month_outlined),
+                        label: const Text('Apri agenda'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   if (upcoming.isEmpty)
@@ -694,6 +759,8 @@ class _RequestsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(adminAppointmentsProvider);
+    final blocks =
+        ref.watch(adminBlocksProvider).value ?? const <AgendaBlock>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -728,6 +795,12 @@ class _RequestsSection extends ConsumerWidget {
                     const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final item = requests[index];
+                  final conflictingBlock = findAgendaBlockConflict(
+                    item,
+                    blocks,
+                  );
+                  final appointmentConflicts =
+                      findConfirmedAppointmentConflicts(item, items);
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
@@ -743,12 +816,23 @@ class _RequestsSection extends ConsumerWidget {
                           Text(
                             '${item.serviceName} · ${item.requestedStartAt.italianDateTime}',
                           ),
+                          if (conflictingBlock != null) ...[
+                            const SizedBox(height: 14),
+                            _BlockConflictWarning(block: conflictingBlock),
+                          ],
+                          if (appointmentConflicts.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            _AppointmentConflictWarning(
+                              appointments: appointmentConflicts,
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           AppointmentStatusChip(status: item.status),
                           const SizedBox(height: 16),
                           AdminRequestActions(
                             acceptEnabled:
-                                item.status == AppointmentStatus.pendingAdmin,
+                                item.status == AppointmentStatus.pendingAdmin &&
+                                appointmentConflicts.isEmpty,
                             onAccept: () => _run(
                               context,
                               ref,
@@ -774,8 +858,122 @@ class _RequestsSection extends ConsumerWidget {
   }
 }
 
+class _BlockConflictWarning extends StatelessWidget {
+  const _BlockConflictWarning({required this.block});
+
+  final AgendaBlock block;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final warningColor = Colors.orange.shade300;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: warningColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: warningColor.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: warningColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Attenzione: coincide con un blocco agenda',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: warningColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(block.reason),
+                const SizedBox(height: 2),
+                Text(
+                  '${block.startAt.italianDateTime} – '
+                  '${DateFormat('HH:mm').format(block.endAt.inStudioTimezone)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppointmentConflictWarning extends StatelessWidget {
+  const _AppointmentConflictWarning({required this.appointments});
+
+  final List<Appointment> appointments;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final warningColor = theme.colorScheme.error;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: warningColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: warningColor.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.event_busy_outlined, color: warningColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appointments.length == 1
+                      ? 'Attenzione: orario già occupato'
+                      : 'Attenzione: più appuntamenti sovrapposti',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: warningColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                for (final appointment in appointments)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '${appointment.clientName ?? 'Cliente'} · '
+                      '${appointment.serviceName}\n'
+                      '${appointment.effectiveStartAt.italianDateTime} – '
+                      '${appointment.effectiveEndAt.italianTime}',
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  'Libera la fascia oppure proponi un altro orario prima di confermare.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AgendaSection extends ConsumerStatefulWidget {
-  const _AgendaSection();
+  const _AgendaSection({super.key, this.initialDayOffset = 0});
+
+  final int initialDayOffset;
 
   @override
   ConsumerState<_AgendaSection> createState() => _AgendaSectionState();
@@ -798,7 +996,11 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
   void initState() {
     super.initState();
     final today = DateTime.now().inStudioTimezone;
-    _selectedDay = DateTime(today.year, today.month, today.day);
+    _selectedDay = DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).add(Duration(days: widget.initialDayOffset));
   }
 
   Future<void> _manualAppointment(
@@ -940,8 +1142,13 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
           .adminCreateBlock(startAt: start, endAt: end, reason: reason);
       ref.invalidate(adminBlocksProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Fascia bloccata.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Blocco agenda salvato. I clienti possono ancora richiedere la fascia.',
+            ),
+          ),
+        );
       }
     } catch (error) {
       if (context.mounted) {
@@ -1125,6 +1332,15 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
               const SizedBox(height: 6),
               Text(
                 '${block.startAt.italianDateTime} – ${block.endAt.italianTime}',
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'I clienti possono comunque richiedere questo orario: '
+                'riceverai un avviso nella sezione Richieste.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.68),
+                ),
               ),
             ],
           ),
@@ -1458,12 +1674,12 @@ class _ServicesSection extends ConsumerWidget {
     SalonService? existing,
   ]) async {
     final name = TextEditingController(text: existing?.name);
+    final category = TextEditingController(
+      text: existing?.category ?? 'Altri servizi',
+    );
     final description = TextEditingController(text: existing?.description);
     final duration = TextEditingController(
       text: '${existing?.durationMinutes ?? 30}',
-    );
-    final buffer = TextEditingController(
-      text: '${existing?.bufferMinutes ?? 0}',
     );
     final price = TextEditingController(
       text: existing?.priceCents == null
@@ -1471,6 +1687,7 @@ class _ServicesSection extends ConsumerWidget {
           : (existing!.priceCents! / 100).toStringAsFixed(2),
     );
     var active = existing?.active ?? true;
+    var priceFrom = existing?.priceFrom ?? false;
     final result = await showDialog<SalonService>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -1490,33 +1707,25 @@ class _ServicesSection extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
                   TextField(
+                    controller: category,
+                    decoration: const InputDecoration(
+                      labelText: 'Categoria',
+                      hintText: 'Taglio, Colore, Trattamenti…',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
                     controller: description,
                     maxLines: 2,
                     decoration: const InputDecoration(labelText: 'Descrizione'),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: duration,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Durata (min)',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: buffer,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Buffer (min)',
-                          ),
-                        ),
-                      ),
-                    ],
+                  TextField(
+                    controller: duration,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Durata (min)',
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -1525,6 +1734,12 @@ class _ServicesSection extends ConsumerWidget {
                       decimal: true,
                     ),
                     decoration: const InputDecoration(labelText: 'Prezzo EUR'),
+                  ),
+                  SwitchListTile(
+                    value: priceFrom,
+                    onChanged: (value) =>
+                        setDialogState(() => priceFrom = value),
+                    title: const Text('Mostra “a partire da”'),
                   ),
                   SwitchListTile(
                     value: active,
@@ -1552,12 +1767,17 @@ class _ServicesSection extends ConsumerWidget {
                   SalonService(
                     id: existing?.id ?? '',
                     name: name.text,
+                    category: category.text.trim().isEmpty
+                        ? 'Altri servizi'
+                        : category.text,
                     description: description.text,
                     durationMinutes: durationValue,
-                    bufferMinutes: int.tryParse(buffer.text) ?? 0,
+                    bufferMinutes: 0,
                     priceCents: priceValue == null
                         ? null
                         : (priceValue * 100).round(),
+                    priceFrom: priceFrom,
+                    operatorIds: existing?.operatorIds ?? const ['alessio'],
                     active: active,
                     displayOrder: existing?.displayOrder ?? 100,
                   ),
@@ -1570,9 +1790,9 @@ class _ServicesSection extends ConsumerWidget {
       ),
     );
     name.dispose();
+    category.dispose();
     description.dispose();
     duration.dispose();
-    buffer.dispose();
     price.dispose();
     if (result == null) return;
     await ref.read(appointmentRepositoryProvider).saveService(result);
@@ -1587,7 +1807,7 @@ class _ServicesSection extends ConsumerWidget {
       children: [
         _SectionHeader(
           'Servizi',
-          subtitle: 'Durata, buffer, prezzo e visibilità',
+          subtitle: 'Categorie, durata, prezzo e visibilità',
           actions: [
             FilledButton.icon(
               onPressed: () => _edit(context, ref),
@@ -1615,11 +1835,9 @@ class _ServicesSection extends ConsumerWidget {
                   final service = items[index];
                   final price = service.priceCents == null
                       ? 'Prezzo su richiesta'
-                      : NumberFormat.simpleCurrency(locale: 'it_IT')
-                            .format(service.priceCents! / 100);
-                  final timing = service.bufferMinutes > 0
-                      ? '${service.durationMinutes} min · ${service.bufferMinutes} min di pausa'
-                      : '${service.durationMinutes} min';
+                      : '${service.priceFrom ? 'Da ' : ''}'
+                            '${NumberFormat.simpleCurrency(locale: 'it_IT').format(service.priceCents! / 100)}';
+                  final timing = '${service.durationMinutes} min';
                   return _AdminListCard(
                     icon: service.active
                         ? Icons.content_cut_outlined
@@ -1628,6 +1846,7 @@ class _ServicesSection extends ConsumerWidget {
                     details: [
                       if (service.description.trim().isNotEmpty)
                         service.description,
+                      service.category,
                       '$timing · $price',
                     ],
                     badge: service.active ? 'Prenotabile' : 'Nascosto',
@@ -1805,6 +2024,10 @@ class _SettingsSectionState extends State<_SettingsSection> {
   final _phone = TextEditingController();
   final _address = TextEditingController();
   final _reminder = TextEditingController();
+  final _slotMinutes = TextEditingController();
+  final _minimumLeadMinutes = TextEditingController();
+  final _bookingHorizonDays = TextEditingController();
+  final _cancellationNoticeHours = TextEditingController();
   var _loaded = false;
 
   @override
@@ -1814,7 +2037,16 @@ class _SettingsSectionState extends State<_SettingsSection> {
     _phone.dispose();
     _address.dispose();
     _reminder.dispose();
+    _slotMinutes.dispose();
+    _minimumLeadMinutes.dispose();
+    _bookingHorizonDays.dispose();
+    _cancellationNoticeHours.dispose();
     super.dispose();
+  }
+
+  int _setting(TextEditingController controller, int fallback) {
+    final value = int.tryParse(controller.text.trim());
+    return value != null && value >= 0 ? value : fallback;
   }
 
   Future<void> _save() async {
@@ -1826,6 +2058,13 @@ class _SettingsSectionState extends State<_SettingsSection> {
       'timezone': AppConfig.timezone,
       'currency': AppConfig.currency,
       'reminderTime': _reminder.text.trim(),
+      'slotMinutes': _setting(_slotMinutes, 30).clamp(5, 120),
+      'minimumLeadMinutes': _setting(_minimumLeadMinutes, 120).clamp(0, 43200),
+      'bookingHorizonDays': _setting(_bookingHorizonDays, 90).clamp(1, 730),
+      'cancellationNoticeHours': _setting(
+        _cancellationNoticeHours,
+        24,
+      ).clamp(0, 720),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     if (mounted) {
@@ -1856,6 +2095,13 @@ class _SettingsSectionState extends State<_SettingsSection> {
           _address.text = data['address'] as String? ?? AppConfig.address;
           _reminder.text =
               data['reminderTime'] as String? ?? AppConfig.reminderTime;
+          _slotMinutes.text = '${(data['slotMinutes'] as num?)?.toInt() ?? 30}';
+          _minimumLeadMinutes.text =
+              '${(data['minimumLeadMinutes'] as num?)?.toInt() ?? 120}';
+          _bookingHorizonDays.text =
+              '${(data['bookingHorizonDays'] as num?)?.toInt() ?? 90}';
+          _cancellationNoticeHours.text =
+              '${(data['cancellationNoticeHours'] as num?)?.toInt() ?? 24}';
           _loaded = true;
         }
         return ListView(
@@ -1920,6 +2166,42 @@ class _SettingsSectionState extends State<_SettingsSection> {
                           decoration: const InputDecoration(
                             labelText: 'Promemoria giorno prima (HH:mm)',
                             helperText: 'Timezone Europe/Rome',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _slotMinutes,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Intervallo richieste (minuti)',
+                            helperText: 'Valore iniziale: 30 minuti',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _minimumLeadMinutes,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Anticipo minimo (minuti)',
+                            helperText: 'Valore iniziale: 120 minuti',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _bookingHorizonDays,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Finestra prenotabile (giorni)',
+                            helperText: 'Valore iniziale: 90 giorni',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _cancellationNoticeHours,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Limite annullamento cliente (ore)',
+                            helperText: 'Valore iniziale: 24 ore',
                           ),
                         ),
                         const SizedBox(height: 20),

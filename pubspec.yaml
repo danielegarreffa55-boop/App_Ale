@@ -1,5 +1,5 @@
 name: salon_booking
-description: "Prenotazioni Barbatum Barberia Sartoriale"
+description: "Prenotazioni Alessio Garreffa Hair"
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -36,7 +36,7 @@ flutter:
   uses-material-design: true
   generate: true
   assets:
-    - assets/branding/barbatum_logo.png
+    - assets/branding/agh_primary.png
   fonts:
     - family: Cinzel
       fonts:

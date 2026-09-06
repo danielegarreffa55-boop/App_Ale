@@ -1,6 +1,6 @@
 # Stato attività
 
-Aggiornato: 31 agosto 2026.
+Aggiornato: 6 settembre 2026.
 
 ## DONE
 
@@ -20,8 +20,21 @@ Aggiornato: 31 agosto 2026.
 
 ## TODO
 
-- [x] Applicare brand Barbatum, palette nero/oro e tipografia Cinzel.
-- [ ] Sostituire la variante raster con il file logo originale ad alta risoluzione/SVG e generare icone e screenshot store approvati.
+- [x] Rimuovere il vecchio brand Barbatum e applicare la palette Alessio Garreffa Hair (`#181818`, `#E8E1D5`, `#7A302B`).
+- [x] Confermare il concept 03 con monogramma AGH e H subordinata.
+- [x] Generare e integrare una prima versione PNG trasparente del marchio AGH.
+- [ ] Fornire/esportare il logo definitivo in SVG/PDF vettoriale e confermare il font.
+- [x] Configurare telefono, indirizzo e payoff approvati.
+- [x] Applicare slot da 30 minuti, anticipo 2 ore, orizzonte 90 giorni e limite annullamento 24 ore, modificabili dall'admin.
+- [x] Supportare categorie servizio e prezzi “a partire da”.
+- [ ] Inserire catalogo, prezzi e orari reali approvati da Alessio.
+- [ ] Completare modello multi-operatore e calendario indipendente per operatore.
+- [ ] Implementare import idempotente Google Calendar → agenda admin.
+- [ ] Implementare richiesta cliente di spostamento entro il limite configurato.
+- [ ] Integrare login Google e Sign in with Apple.
+- [ ] Realizzare landing page pubblica con mappa e CTA Prenota.
+- [ ] Aggiornare i plugin Firebase quando supporteranno il nuovo Built-in Kotlin di Flutter; la build attuale mostra solo un avviso futuro non bloccante.
+- [ ] Generare icone e screenshot store dal logo definitivo approvato.
 - [ ] Eseguire UAT con dati reali dello studio e almeno due dispositivi fisici.
 - [ ] Far revisionare Privacy Policy, termini e strategia di conservazione da un professionista.
 - [ ] TestFlight, closed testing Play e verifica accessibilità con utenti reali.
@@ -39,4 +52,6 @@ Aggiornato: 31 agosto 2026.
 
 ## IN PROGRESS
 
-Nessuna attività automatizzabile rimasta senza gli account e i materiali elencati sopra.
+- [ ] Raccolta dei dati reali ancora mancanti elencati in `PRODUCT_REQUIREMENTS.md`.
+- [ ] Sostituzione dei placeholder demo e definizione delle identità tecniche production.
+- [ ] Pulizia progressiva del repository: rimossi asset Barbatum e motore Flutter di disponibilità duplicato/non usato.

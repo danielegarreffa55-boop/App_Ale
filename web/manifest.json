@@ -1,11 +1,11 @@
 {
-    "name": "Barbatum - Prenotazioni",
-    "short_name": "Barbatum",
+    "name": "Alessio Garreffa Hair - Prenotazioni",
+    "short_name": "AGH",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#080808",
-    "theme_color": "#D4AF37",
-    "description": "Prenotazioni Barbatum Barberia Sartoriale",
+    "background_color": "#E8E1D5",
+    "theme_color": "#7A302B",
+    "description": "Prenotazioni Alessio Garreffa Hair",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

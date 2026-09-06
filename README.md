@@ -1,12 +1,12 @@
-# Barbatum — Barberia Sartoriale
+# Alessio Garreffa Hair
 
-Applicazione Flutter per iOS, Android e Web con interfaccia cliente, dashboard amministratore responsive e backend Firebase. `salon_booking` è soltanto il nome tecnico; brand, contatti, colori e identificatori di pubblicazione sono sostituibili.
+Applicazione Flutter per iOS, Android e Web con interfaccia cliente, dashboard amministratore responsive e backend Firebase. `salon_booking` è soltanto il nome tecnico interno; contatti e identificatori di pubblicazione devono essere configurati prima della release.
 
 ## Funzioni implementate
 
 - Registrazione email/password, verifica email, recupero password, logout ed eliminazione/anomizzazione account.
 - Catalogo servizi amministrabile, orari settimanali, ferie/chiusure tramite blocchi agenda.
-- Richiesta cliente sempre `PENDING_ADMIN`; l'admin può accettare, rifiutare o fare una controproposta.
+- Richiesta cliente sempre `PENDING_ADMIN`, anche su fasce già occupate; l'admin vede i conflitti e può accettare, rifiutare o fare una controproposta.
 - Accettazione/rifiuto della controproposta da parte del cliente.
 - Conferma e spostamento protetti da transazioni e lock Firestore a bucket da 5 minuti.
 - Dashboard admin Web/mobile: metriche, richieste, agenda, clienti, servizi, orari e impostazioni.
@@ -40,7 +40,7 @@ Account demo creati esclusivamente nell'emulatore:
 - `admin@demo.local` / `DemoOnly-ChangeMe-123!`
 - `cliente@demo.local` / `DemoOnly-ChangeMe-123!`
 
-Per ambiente, Firebase, Calendar, notifiche e release seguire [SETUP.md](SETUP.md) e [DEPLOYMENT.md](DEPLOYMENT.md). Le decisioni tecniche e il modello dati sono in [ARCHITECTURE.md](ARCHITECTURE.md).
+Per ambiente, Firebase, Calendar, notifiche e release seguire [SETUP.md](SETUP.md) e [DEPLOYMENT.md](DEPLOYMENT.md). I requisiti approvati sono in [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md); le decisioni tecniche e il modello dati sono in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Qualità
 

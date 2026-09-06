@@ -30,7 +30,7 @@ class _SalonAppState extends State<SalonApp> {
     return MaterialApp.router(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
+      theme: AppTheme.editorial,
       locale: const Locale('it', 'IT'),
       localizationsDelegates: SalonApp.localizationsDelegates,
       supportedLocales: SalonApp.supportedLocales,

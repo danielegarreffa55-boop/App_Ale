@@ -16,7 +16,7 @@ Il client può leggere soltanto i propri dati e i servizi attivi. Non può scriv
 ## Flusso prenotazione
 
 ```text
-Cliente -> createAppointmentRequest -> PENDING_ADMIN
+Cliente -> createAppointmentRequest (anche su fascia occupata) -> PENDING_ADMIN
                                       |-> adminReject -> REJECTED
                                       |-> adminCounterPropose -> COUNTER_PROPOSED
                                       |                         |-> client reject -> COUNTER_REJECTED
@@ -31,9 +31,11 @@ CONFIRMED -> trigger FCM + trigger Calendar
 
 ## Anti doppia prenotazione
 
-Ogni intervallo occupato include durata servizio e buffer. Il backend lo suddivide in documenti deterministici da 5 minuti in `appointmentLocks`. La transazione legge tutti i bucket, fallisce se uno appartiene a un altro holder e scrive lock + stato `CONFIRMED` nello stesso commit. Due transazioni concorrenti toccano almeno un documento identico: Firestore ne serializza una e l'altra vede `SLOT_UNAVAILABLE`.
+La richiesta del cliente non acquisisce lock e può sovrapporsi a un appuntamento confermato. L'area admin evidenzia il conflitto e richiede di liberare la fascia o proporre un altro orario prima della conferma.
 
-I blocchi agenda usano gli stessi documenti, quindi competono atomicamente con le conferme. Lo spostamento legge insieme vecchi e nuovi lock, elimina soltanto quelli non più usati e acquisisce i nuovi nello stesso commit.
+Ogni intervallo confermato include durata servizio e buffer. Il backend lo suddivide in documenti deterministici da 5 minuti in `appointmentLocks`. La transazione legge tutti i bucket, fallisce se uno appartiene a un altro appuntamento confermato e scrive lock + stato `CONFIRMED` nello stesso commit. Due transazioni concorrenti toccano almeno un documento identico: Firestore ne serializza una e l'altra vede `SLOT_UNAVAILABLE`.
+
+I blocchi agenda sono promemoria amministrativi morbidi: non nascondono gli slot al cliente e non impediscono richieste o conferme. Il loro motivo è visibile soltanto all'admin come avviso. Lo spostamento di un appuntamento legge insieme vecchi e nuovi lock, elimina soltanto quelli non più usati e acquisisce i nuovi nello stesso commit.
 
 Il test `lock-race.emulator.test.ts` invia due acquisizioni contemporanee e verifica un solo successo.
 
@@ -42,8 +44,8 @@ Il test `lock-race.emulator.test.ts` invia due acquisizioni contemporanee e veri
 - `users/{uid}`: profilo minimizzato; `devices/{hash}` per token FCM multipli.
 - `services/{id}`: nome, descrizione, durata, buffer, prezzo, attivo, ordine.
 - `appointments/{id}`: snapshot servizio/cliente, requested/proposed/confirmed UTC, stato corrente, history, Calendar e reminder.
-- `appointmentLocks/{bucket}`: holder appointment/block e bucket UTC; mai leggibile dal client.
-- `blocks/{id}`: ferie, chiusure o fasce manuali.
+- `appointmentLocks/{bucket}`: holder dell'appuntamento confermato e bucket UTC; mai leggibile dal client.
+- `blocks/{id}`: promemoria admin per ferie, chiusure o fasce manuali; non bloccanti per il cliente.
 - `studio/config`: brand operativo, timezone, valuta, reminder e openingHours.
 - `notificationLogs/{id}`: claim/SENT/FAILED/SKIPPED per deduplicazione e diagnosi.
 - `rateLimits/{uid_action}`: finestra contatori callable.
@@ -61,4 +63,10 @@ Firestore contiene soltanto `Timestamp` UTC. Luxon/timezone convertono con zona 
 
 ## Estendibilità
 
-La prima release assume una sola risorsa/staff. Per più operatori aggiungere `resourceId` al lock ID e ai filtri senza cambiare la state machine. Note interne possono vivere in una sottocollezione admin-only, evitando di esporle nel documento leggibile dal cliente.
+La prima release visualizza il solo operatore Alessio, ma la produzione dovrà
+associare `operatorId` a servizi, appuntamenti, blocchi, lock e calendario. Il
+bucket del lock dovrà essere partizionato per operatore, così due operatori
+possono lavorare nello stesso orario senza generare un falso conflitto. Gli
+eventi importati da Google Calendar saranno documenti admin-only o appuntamenti
+con sorgente esterna e senza account cliente. Note e motivi dei blocchi restano
+sempre admin-only.

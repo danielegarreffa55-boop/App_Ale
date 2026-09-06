@@ -76,6 +76,7 @@ class AppointmentCard extends StatelessWidget {
     required this.appointment,
     this.onAcceptProposal,
     this.onRejectProposal,
+    this.onCancel,
     this.trailing,
     super.key,
   });
@@ -83,6 +84,7 @@ class AppointmentCard extends StatelessWidget {
   final Appointment appointment;
   final VoidCallback? onAcceptProposal;
   final VoidCallback? onRejectProposal;
+  final VoidCallback? onCancel;
   final Widget? trailing;
 
   @override
@@ -151,6 +153,17 @@ class AppointmentCard extends StatelessWidget {
             if (appointment.adminReason case final reason?) ...[
               const SizedBox(height: 12),
               Text('Nota dello studio: $reason'),
+            ],
+            if (onCancel != null) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onCancel,
+                  icon: const Icon(Icons.event_busy_outlined),
+                  label: const Text('Annulla appuntamento'),
+                ),
+              ),
             ],
           ],
         ),

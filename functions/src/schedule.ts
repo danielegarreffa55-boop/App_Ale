@@ -111,7 +111,13 @@ export async function acquireLocks(
   const references = lockReferences(db, startAt, endWithBufferAt);
   const snapshots = await transaction.getAll(...references);
   for (const snapshot of snapshots) {
-    if (snapshot.exists && snapshot.get("holderId") !== holderId) {
+    const canReplaceSoftBlock = holderType === "appointment" &&
+      snapshot.get("holderType") === "block";
+    if (
+      snapshot.exists &&
+      snapshot.get("holderId") !== holderId &&
+      !canReplaceSoftBlock
+    ) {
       throw new Error("SLOT_UNAVAILABLE");
     }
   }
@@ -166,7 +172,11 @@ export async function replaceLocks(
   const newPaths = new Set(newReferences.map((reference) => reference.path));
   for (const reference of newReferences) {
     const snapshot = snapshotsByPath.get(reference.path)!;
-    if (snapshot.exists && snapshot.get("holderId") !== holderId) {
+    if (
+      snapshot.exists &&
+      snapshot.get("holderId") !== holderId &&
+      snapshot.get("holderType") !== "block"
+    ) {
       throw new Error("SLOT_UNAVAILABLE");
     }
   }

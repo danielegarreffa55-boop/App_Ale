@@ -29,8 +29,9 @@ service cloud.firestore {
       allow read: if signedIn() && (resource.data.active == true || isAdmin());
       allow create, update, delete: if isAdmin()
         && request.resource.data.keys().hasOnly([
-          'name', 'description', 'durationMinutes', 'bufferMinutes',
-          'priceCents', 'active', 'displayOrder', 'createdAt', 'updatedAt'
+          'name', 'category', 'description', 'durationMinutes', 'bufferMinutes',
+          'priceCents', 'priceFrom', 'operatorIds', 'active', 'displayOrder',
+          'createdAt', 'updatedAt'
         ]);
     }
 

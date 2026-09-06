@@ -50,16 +50,19 @@ async function main(): Promise<void> {
     updatedAt: Timestamp.now(),
   });
   [
-    ["taglio", "Taglio", 30, 5, 3000],
-    ["taglio-barba", "Taglio + Barba", 45, 5, 4500],
-    ["colore", "Colore", 90, 10, 7500],
-  ].forEach(([id, name, duration, buffer, price], index) => {
+    ["taglio", "Taglio", "Taglio", 30, 3000],
+    ["taglio-barba", "Taglio + Barba", "Barba", 45, 4500],
+    ["colore", "Colore", "Colore", 90, 7500],
+  ].forEach(([id, name, category, duration, price], index) => {
     batch.set(db.collection("services").doc(String(id)), {
       name,
+      category,
       description: "Servizio demo modificabile dall'area admin",
       durationMinutes: duration,
-      bufferMinutes: buffer,
+      bufferMinutes: 0,
       priceCents: price,
+      priceFrom: false,
+      operatorIds: ["alessio"],
       active: true,
       displayOrder: index,
       createdAt: Timestamp.now(),
@@ -67,10 +70,17 @@ async function main(): Promise<void> {
     });
   });
   batch.set(db.collection("studio").doc("config"), {
-    studioName: "Atelier Studio",
+    studioName: "Alessio Garreffa Hair Demo",
+    supportEmail: "",
+    supportPhone: "+39 342 535 5594",
+    address: "Via Cottolengo 44, 10048 Vinovo TO",
     timezone: "Europe/Rome",
     currency: "EUR",
     reminderTime: "18:00",
+    slotMinutes: 30,
+    minimumLeadMinutes: 120,
+    bookingHorizonDays: 90,
+    cancellationNoticeHours: 24,
     openingHours: defaultOpeningHours,
     updatedAt: Timestamp.now(),
   });

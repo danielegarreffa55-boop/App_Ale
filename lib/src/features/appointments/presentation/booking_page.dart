@@ -37,11 +37,14 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
   Future<void> _pickDay() async {
     final now = DateUtils.dateOnly(DateTime.now());
+    final studioConfig = ref.read(studioConfigProvider).value ?? const {};
+    final horizonDays =
+        (studioConfig['bookingHorizonDays'] as num?)?.toInt() ?? 90;
     final day = await showDatePicker(
       context: context,
       initialDate: _day.isBefore(now) ? now : _day,
       firstDate: now,
-      lastDate: now.add(const Duration(days: 180)),
+      lastDate: now.add(Duration(days: horizonDays.clamp(1, 730))),
       locale: const Locale('it', 'IT'),
       helpText: 'Scegli il giorno',
     );
@@ -191,8 +194,9 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                                         ],
                                         const SizedBox(height: 12),
                                         Text(
+                                          '${service.category} · '
                                           '${service.durationMinutes} min'
-                                          '${price == null ? '' : ' · $price'}',
+                                          '${price == null ? '' : ' · ${service.priceFrom ? 'da ' : ''}$price'}',
                                         ),
                                       ],
                                     ),

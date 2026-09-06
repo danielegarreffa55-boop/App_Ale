@@ -43,10 +43,13 @@ export interface AppointmentDocument {
 
 export interface ServiceDocument {
   name: string;
+  category?: string;
   description?: string;
   durationMinutes: number;
   bufferMinutes?: number;
   priceCents?: number;
+  priceFrom?: boolean;
+  operatorIds?: string[];
   active: boolean;
   displayOrder: number;
 }
@@ -62,6 +65,10 @@ export interface StudioConfig {
   studioName?: string;
   timezone?: string;
   reminderTime?: string;
+  slotMinutes?: number;
+  minimumLeadMinutes?: number;
+  bookingHorizonDays?: number;
+  cancellationNoticeHours?: number;
   openingHours?: Record<string, OpeningDay>;
 }
 

@@ -35,6 +35,9 @@ class SalonService {
     required this.bufferMinutes,
     required this.active,
     required this.displayOrder,
+    this.category = 'Altri servizi',
+    this.priceFrom = false,
+    this.operatorIds = const [],
     this.priceCents,
   });
 
@@ -45,10 +48,13 @@ class SalonService {
     return SalonService(
       id: document.id,
       name: data['name'] as String? ?? '',
+      category: data['category'] as String? ?? 'Altri servizi',
       description: data['description'] as String? ?? '',
       durationMinutes: (data['durationMinutes'] as num?)?.toInt() ?? 30,
       bufferMinutes: (data['bufferMinutes'] as num?)?.toInt() ?? 0,
       priceCents: (data['priceCents'] as num?)?.toInt(),
+      priceFrom: data['priceFrom'] as bool? ?? false,
+      operatorIds: List<String>.from(data['operatorIds'] as List? ?? const []),
       active: data['active'] as bool? ?? false,
       displayOrder: (data['displayOrder'] as num?)?.toInt() ?? 0,
     );
@@ -56,19 +62,25 @@ class SalonService {
 
   final String id;
   final String name;
+  final String category;
   final String description;
   final int durationMinutes;
   final int bufferMinutes;
   final int? priceCents;
+  final bool priceFrom;
+  final List<String> operatorIds;
   final bool active;
   final int displayOrder;
 
   Map<String, Object?> toJson() => {
     'name': name.trim(),
+    'category': category.trim(),
     'description': description.trim(),
     'durationMinutes': durationMinutes,
     'bufferMinutes': bufferMinutes,
     'priceCents': priceCents,
+    'priceFrom': priceFrom,
+    'operatorIds': operatorIds,
     'active': active,
     'displayOrder': displayOrder,
   };
@@ -181,6 +193,47 @@ class AgendaBlock {
   final DateTime endAt;
   final String reason;
   final bool active;
+}
+
+/// Returns the first active agenda block that overlaps the appointment's
+/// currently relevant interval.
+AgendaBlock? findAgendaBlockConflict(
+  Appointment appointment,
+  Iterable<AgendaBlock> blocks,
+) {
+  final startAt = appointment.effectiveStartAt;
+  final endAt = appointment.effectiveEndAt;
+  for (final block in blocks) {
+    if (block.active &&
+        startAt.isBefore(block.endAt) &&
+        endAt.isAfter(block.startAt)) {
+      return block;
+    }
+  }
+  return null;
+}
+
+/// Returns confirmed appointments that overlap the request being managed.
+List<Appointment> findConfirmedAppointmentConflicts(
+  Appointment appointment,
+  Iterable<Appointment> appointments,
+) {
+  final startAt = appointment.effectiveStartAt;
+  final endAt = appointment.effectiveEndAt;
+  final conflicts = appointments
+      .where(
+        (candidate) =>
+            candidate.id != appointment.id &&
+            candidate.status == AppointmentStatus.confirmed &&
+            startAt.isBefore(candidate.effectiveEndAt) &&
+            endAt.isAfter(candidate.effectiveStartAt),
+      )
+      .toList();
+  conflicts.sort(
+    (first, second) =>
+        first.effectiveStartAt.compareTo(second.effectiveStartAt),
+  );
+  return conflicts;
 }
 
 bool canTransition(AppointmentStatus from, AppointmentStatus to) {

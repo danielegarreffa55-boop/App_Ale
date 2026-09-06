@@ -10,10 +10,12 @@ void main() {
     const service = SalonService(
       id: 'taglio',
       name: 'Taglio',
+      category: 'Taglio',
       description: 'Consulenza e taglio',
       durationMinutes: 30,
       bufferMinutes: 5,
       priceCents: 3000,
+      priceFrom: true,
       active: true,
       displayOrder: 0,
     );
@@ -28,5 +30,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Taglio'), findsOneWidget);
     expect(find.textContaining('30 min'), findsOneWidget);
+    expect(find.textContaining('da '), findsOneWidget);
   });
 }

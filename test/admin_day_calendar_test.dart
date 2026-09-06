@@ -28,7 +28,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.dark,
+        theme: AppTheme.editorial,
         home: Scaffold(
           body: SizedBox(
             height: 650,

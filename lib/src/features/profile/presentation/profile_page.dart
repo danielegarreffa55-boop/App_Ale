@@ -149,7 +149,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         leading: const Icon(Icons.support_agent_outlined),
                         title: const Text('Assistenza'),
                         subtitle: Text(
-                          '${AppConfig.supportEmail}\n${AppConfig.supportPhone}',
+                          [AppConfig.supportEmail, AppConfig.supportPhone]
+                              .where((value) => value.trim().isNotEmpty)
+                              .join('\n'),
                         ),
                       ),
                       const Divider(height: 1),

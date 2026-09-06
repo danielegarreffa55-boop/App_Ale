@@ -4,23 +4,23 @@ import 'package:flutter/foundation.dart';
 abstract final class AppConfig {
   static const studioName = String.fromEnvironment(
     'STUDIO_NAME',
-    defaultValue: 'Barbatum Barberia Sartoriale',
+    defaultValue: 'Alessio Garreffa Hair',
   );
   static const appName = String.fromEnvironment(
     'APP_NAME',
-    defaultValue: 'Barbatum',
+    defaultValue: 'Alessio Garreffa Hair',
   );
   static const supportEmail = String.fromEnvironment(
     'SUPPORT_EMAIL',
-    defaultValue: 'assistenza@example.it',
+    defaultValue: '',
   );
   static const supportPhone = String.fromEnvironment(
     'SUPPORT_PHONE',
-    defaultValue: '+390000000000',
+    defaultValue: '+39 342 535 5594',
   );
   static const address = String.fromEnvironment(
     'ADDRESS',
-    defaultValue: 'Via da definire, Italia',
+    defaultValue: 'Via Cottolengo 44, 10048 Vinovo TO',
   );
   static const timezone = String.fromEnvironment(
     'TIMEZONE',

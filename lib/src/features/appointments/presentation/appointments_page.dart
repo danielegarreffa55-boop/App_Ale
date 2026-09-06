@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +10,60 @@ import '../domain/appointment_models.dart';
 
 class AppointmentsPage extends ConsumerWidget {
   const AppointmentsPage({super.key});
+
+  Future<void> _cancel(
+    BuildContext context,
+    WidgetRef ref,
+    Appointment appointment,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Annulla appuntamento'),
+        content: const Text(
+          'Puoi annullare fino a 24 ore prima. Oltre questo limite contatta '
+          'direttamente lo studio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Mantieni'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Conferma annullamento'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(appointmentRepositoryProvider)
+          .cancelAppointment(appointment.id);
+      ref.invalidate(clientAppointmentsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appuntamento annullato.')),
+        );
+      }
+    } catch (error) {
+      final closed =
+          error is FirebaseFunctionsException &&
+          error.message == 'CANCELLATION_WINDOW_CLOSED';
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              closed
+                  ? 'Mancano meno di 24 ore: contatta direttamente lo studio.'
+                  : 'Annullamento non riuscito. Riprova tra poco.',
+            ),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _respond(
     BuildContext context,
@@ -73,8 +128,16 @@ class AppointmentsPage extends ConsumerWidget {
                           const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final item = items[index];
+                        final cancellable = !{
+                          AppointmentStatus.cancelled,
+                          AppointmentStatus.rejected,
+                          AppointmentStatus.completed,
+                        }.contains(item.status);
                         return AppointmentCard(
                           appointment: item,
+                          onCancel: cancellable
+                              ? () => _cancel(context, ref, item)
+                              : null,
                           onAcceptProposal:
                               item.status == AppointmentStatus.counterProposed
                               ? () => _respond(context, ref, item, true)

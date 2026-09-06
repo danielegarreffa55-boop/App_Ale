@@ -16,7 +16,6 @@ import {
   defaultOpeningHours,
   ensureWithinOpeningHours,
   localDayBounds,
-  lockBucketIds,
   lockReferences,
   openingDayFor,
   replaceLocks,
@@ -65,6 +64,18 @@ async function studioConfig(): Promise<StudioConfig> {
     timezone: "Europe/Rome",
     openingHours: defaultOpeningHours,
   }) as StudioConfig;
+}
+
+function boundedSetting(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  if (!Number.isInteger(value) || value! < minimum || value! > maximum) {
+    return fallback;
+  }
+  return value!;
 }
 
 function historyEntry(
@@ -159,29 +170,44 @@ export const getAvailability = onCall(callableOptions, async (request) => {
   }
   const service = serviceSnapshot.data() as ServiceDocument;
   const timezone = config.timezone || "Europe/Rome";
+  const now = DateTime.now().setZone(timezone);
+  const slotMinutes = boundedSetting(config.slotMinutes, 30, 5, 120);
+  const minimumLeadMinutes = boundedSetting(
+    config.minimumLeadMinutes,
+    120,
+    0,
+    43_200,
+  );
+  const bookingHorizonDays = boundedSetting(
+    config.bookingHorizonDays,
+    90,
+    1,
+    730,
+  );
   const bounds = localDayBounds(data.date, timezone);
-  const maximum = DateTime.now().setZone(timezone).plus({days: 180});
-  if (bounds.start < DateTime.now().setZone(timezone).startOf("day") ||
-      bounds.start > maximum) {
+  const maximum = now.startOf("day").plus({days: bookingHorizonDays + 1});
+  if (bounds.start < now.startOf("day") ||
+      bounds.start >= maximum) {
     throw new HttpsError("invalid-argument", "DATE_OUT_OF_RANGE");
   }
   const {day} = openingDayFor(bounds.start.toUTC().toJSDate(), config);
   if (!day.enabled) return {slots: []};
   const open = DateTime.fromISO(`${data.date}T${day.open}`, {zone: timezone});
   const close = DateTime.fromISO(`${data.date}T${day.close}`, {zone: timezone});
-  const lockSnapshot = await db
-    .collection("appointmentLocks")
-    .where("bucketStartAt", ">=", Timestamp.fromDate(bounds.start.toUTC().toJSDate()))
-    .where("bucketStartAt", "<", Timestamp.fromDate(bounds.end.toUTC().toJSDate()))
-    .get();
-  const occupied = new Set(lockSnapshot.docs.map((document) => document.id));
   const slots: Array<{startAt: string; endAt: string}> = [];
   const duration = service.durationMinutes;
   const buffer = service.bufferMinutes || 0;
-  for (let cursor = open; cursor < close; cursor = cursor.plus({minutes: 15})) {
+  for (
+    let cursor = open;
+    cursor < close;
+    cursor = cursor.plus({minutes: slotMinutes})
+  ) {
     const end = cursor.plus({minutes: duration});
     const lockEnd = end.plus({minutes: buffer});
-    if (lockEnd > close || cursor.toUTC() <= DateTime.now().toUTC().plus({minutes: 15})) {
+    if (
+      lockEnd > close ||
+      cursor.toUTC() < now.toUTC().plus({minutes: minimumLeadMinutes})
+    ) {
       continue;
     }
     try {
@@ -193,11 +219,6 @@ export const getAvailability = onCall(callableOptions, async (request) => {
     } catch {
       continue;
     }
-    const bucketIds = lockBucketIds(
-      cursor.toUTC().toJSDate(),
-      lockEnd.toUTC().toJSDate(),
-    );
-    if (bucketIds.some((id) => occupied.has(id))) continue;
     slots.push({
       startAt: cursor.toUTC().toISO()!,
       endAt: end.toUTC().toISO()!,
@@ -216,14 +237,36 @@ export const createAppointmentRequest = onCall(
     }
     const data = createSchema.parse(request.data);
     const startAt = parseDate(data.requestedStartAt);
-    if (startAt.getTime() < Date.now() + 15 * 60_000) {
-      throw new HttpsError("invalid-argument", "DATE_IN_PAST");
-    }
     const [serviceSnapshot, profileSnapshot, config] = await Promise.all([
       db.collection("services").doc(data.serviceId).get(),
       db.collection("users").doc(uid).get(),
       studioConfig(),
     ]);
+    const minimumLeadMinutes = boundedSetting(
+      config.minimumLeadMinutes,
+      120,
+      0,
+      43_200,
+    );
+    const bookingHorizonDays = boundedSetting(
+      config.bookingHorizonDays,
+      90,
+      1,
+      730,
+    );
+    if (startAt.getTime() < Date.now() + minimumLeadMinutes * 60_000) {
+      throw new HttpsError("invalid-argument", "DATE_TOO_SOON");
+    }
+    const timezone = config.timezone || "Europe/Rome";
+    const maximum = DateTime.now()
+      .setZone(timezone)
+      .startOf("day")
+      .plus({days: bookingHorizonDays + 1});
+    const requestedLocal = DateTime.fromJSDate(startAt, {zone: "utc"})
+      .setZone(timezone);
+    if (requestedLocal >= maximum) {
+      throw new HttpsError("invalid-argument", "DATE_OUT_OF_RANGE");
+    }
     if (!serviceSnapshot.exists || serviceSnapshot.get("active") !== true) {
       throw new HttpsError("not-found", "SERVICE_NOT_FOUND");
     }
@@ -237,8 +280,6 @@ export const createAppointmentRequest = onCall(
     );
     try {
       ensureWithinOpeningHours(startAt, lockEndAt, config);
-      const locks = await db.getAll(...lockReferences(db, startAt, lockEndAt));
-      if (locks.some((lock) => lock.exists)) throw new Error("SLOT_UNAVAILABLE");
     } catch (error) {
       scheduleError(error);
     }
@@ -333,7 +374,9 @@ export const adminCounterPropose = onCall(callableOptions, async (request) => {
       const lockSnapshots = await transaction.getAll(
         ...lockReferences(db, proposedStartAt, lockEndAt),
       );
-      if (lockSnapshots.some((lock) => lock.exists)) {
+      if (lockSnapshots.some(
+        (lock) => lock.exists && lock.get("holderType") !== "block",
+      )) {
         throw new Error("SLOT_UNAVAILABLE");
       }
       transaction.update(reference, {
@@ -400,6 +443,27 @@ export const cancelAppointment = onCall(callableOptions, async (request) => {
     }
     if (["REJECTED", "CANCELLED", "COMPLETED"].includes(appointment.status)) {
       throw new HttpsError("failed-precondition", "INVALID_TRANSITION");
+    }
+    if (!admin && appointment.status === "CONFIRMED" && appointment.confirmedStartAt) {
+      const configSnapshot = await transaction.get(
+        db.collection("studio").doc("config"),
+      );
+      const config = (configSnapshot.data() || {}) as StudioConfig;
+      const noticeHours = boundedSetting(
+        config.cancellationNoticeHours,
+        24,
+        0,
+        720,
+      );
+      if (
+        appointment.confirmedStartAt.toMillis() <
+        Date.now() + noticeHours * 3_600_000
+      ) {
+        throw new HttpsError(
+          "failed-precondition",
+          "CANCELLATION_WINDOW_CLOSED",
+        );
+      }
     }
     if (appointment.status === "CONFIRMED" && appointment.confirmedStartAt) {
       const startAt = appointment.confirmedStartAt.toDate();
@@ -592,23 +656,13 @@ export const adminCreateBlock = onCall(callableOptions, async (request) => {
   }
   const reference = db.collection("blocks").doc();
   try {
-    await db.runTransaction(async (transaction) => {
-      await acquireLocks(
-        db,
-        transaction,
-        reference.id,
-        "block",
-        startAt,
-        endAt,
-      );
-      transaction.create(reference, {
-        startAt: Timestamp.fromDate(startAt),
-        endAt: Timestamp.fromDate(endAt),
-        reason: data.reason,
-        active: true,
-        createdBy: uid,
-        createdAt: Timestamp.now(),
-      });
+    await reference.create({
+      startAt: Timestamp.fromDate(startAt),
+      endAt: Timestamp.fromDate(endAt),
+      reason: data.reason,
+      active: true,
+      createdBy: uid,
+      createdAt: Timestamp.now(),
     });
   } catch (error) {
     scheduleError(error);
