@@ -26,6 +26,12 @@ final isAdminProvider = FutureProvider<bool>((ref) async {
   return ref.watch(authRepositoryProvider).isAdmin();
 });
 
+final isOwnerProvider = FutureProvider<bool>((ref) async {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return false;
+  return ref.watch(authRepositoryProvider).isOwner();
+});
+
 final servicesProvider = StreamProvider<List<SalonService>>((ref) {
   return ref.watch(appointmentRepositoryProvider).watchServices();
 });

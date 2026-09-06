@@ -3,20 +3,22 @@
 ## Componenti
 
 - Flutter/Dart: un solo codebase Android, iOS e Web; Riverpod per dipendenze/stato, go_router per navigazione.
-- Firebase Auth: identità client e Custom Claim `admin` assegnato solo da Admin SDK.
+- Firebase Auth: identità e ruoli tramite Custom Claims assegnati solo da Admin SDK. `owner` identifica il proprietario; `admin` abilita la console operativa sia al proprietario sia ai gestori.
 - Firestore: dati realtime, regole deny-by-default e indici dichiarativi.
-- Callable Functions TypeScript: unica autorità per appuntamenti, profili, device token e transizioni.
-- Trigger Functions: FCM e sincronizzazione Calendar idempotenti.
-- Scheduled Function: ogni 5 minuti controlla l'orario configurato in `Europe/Rome` e invia i reminder del giorno successivo.
+- API Python/FastAPI su Cloud Run: autorità di produzione per appuntamenti, profili, device token, ruoli e transizioni.
+- Service account Cloud Run: accesso minimo a Firestore, Firebase Auth, logging e al calendario Google esplicitamente condiviso.
+- Callable/Trigger Functions TypeScript: fallback per l'emulatore e worker asincroni FCM/reminder durante la migrazione.
 
 ## Confini di fiducia
 
-Il client può leggere soltanto i propri dati e i servizi attivi. Non può scrivere appuntamenti, claim, `CONFIRMED`, lock, `googleCalendarEventId`, reminder o notification log. Le modifiche admin a servizi/config sono ammesse dalle Rules soltanto con Custom Claim valido. Ogni callable controlla auth/App Check, schema Zod, ruolo e rate limit.
+Il client può leggere soltanto i propri dati e i servizi attivi. Non può scrivere appuntamenti, claim, `CONFIRMED`, lock, `googleCalendarEventId`, reminder o notification log. Ogni richiesta di modifica passa dall'API HTTPS, che verifica il Firebase ID token, valida lo schema Pydantic, controlla il ruolo e applica il rate limit. Le Security Rules proteggono anche le letture realtime effettuate direttamente dall'app.
+
+La gerarchia account è `owner` > `manager` > `client`. Solo un `owner` può chiamare `ownerSetUserRole`; il backend aggiorna Auth e il profilo Firestore, revoca i refresh token e impedisce al proprietario di togliersi da solo l'accesso. Un altro proprietario può comunque cambiarne il ruolo. Il primo proprietario viene inizializzato con uno script eseguito in ambiente fidato.
 
 ## Flusso prenotazione
 
 ```text
-Cliente -> createAppointmentRequest (anche su fascia occupata) -> PENDING_ADMIN
+Cliente -> POST /v1/appointments (anche su fascia occupata) -> PENDING_ADMIN
                                       |-> adminReject -> REJECTED
                                       |-> adminCounterPropose -> COUNTER_PROPOSED
                                       |                         |-> client reject -> COUNTER_REJECTED

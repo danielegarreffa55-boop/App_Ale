@@ -4,6 +4,7 @@ setGlobalOptions({region: "europe-west1", maxInstances: 20});
 
 export {
   ensureUserProfile,
+  ownerSetUserRole,
   registerDeviceToken,
   requestAccountDeletion,
 } from "./auth";

@@ -55,6 +55,7 @@ abstract final class AppConfig {
     'RECAPTCHA_V3_SITE_KEY',
   );
   static const fcmWebVapidKey = String.fromEnvironment('FCM_WEB_VAPID_KEY');
+  static const backendApiUrl = String.fromEnvironment('BACKEND_API_URL');
   static const useFirebaseEmulators = bool.fromEnvironment(
     'USE_FIREBASE_EMULATORS',
     defaultValue: false,

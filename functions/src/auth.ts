@@ -1,9 +1,9 @@
 import {createHash} from "node:crypto";
 import {getAuth} from "firebase-admin/auth";
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
-import {onCall} from "firebase-functions/v2/https";
+import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {z} from "zod";
-import {callableOptions, db, rateLimit, requireAuth} from "./core";
+import {callableOptions, db, rateLimit, requireAuth, requireOwner} from "./core";
 
 const profileSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
@@ -16,6 +16,27 @@ const tokenSchema = z.object({
   token: z.string().min(20).max(4096),
   platform: z.enum(["android", "iOS", "macOS", "web", "windows", "linux"]),
 });
+
+const roleChangeSchema = z.object({
+  uid: z.string().trim().min(1).max(128),
+  role: z.enum(["client", "manager", "owner"]),
+});
+
+export type AccountRole = z.infer<typeof roleChangeSchema>["role"];
+
+export function claimsForRole(
+  currentClaims: Record<string, unknown> | undefined,
+  role: AccountRole,
+): Record<string, unknown> {
+  const claims = {...(currentClaims || {})};
+  delete claims.admin;
+  delete claims.owner;
+  delete claims.role;
+  claims.role = role;
+  if (role === "manager" || role === "owner") claims.admin = true;
+  if (role === "owner") claims.owner = true;
+  return claims;
+}
 
 export const ensureUserProfile = onCall(callableOptions, async (request) => {
   const uid = requireAuth(request);
@@ -35,8 +56,10 @@ export const ensureUserProfile = onCall(callableOptions, async (request) => {
       privacyAcceptedAt: existing.get("privacyAcceptedAt") || Timestamp.now(),
       createdAt: existing.get("createdAt") || Timestamp.now(),
       updatedAt: Timestamp.now(),
-      // Only the set-admin script can change these fields.
+      // Only trusted Admin SDK flows can change role fields.
       isAdmin: existing.get("isAdmin") === true,
+      isOwner: existing.get("isOwner") === true,
+      role: existing.get("role") || "client",
     },
     {merge: true},
   );
@@ -64,9 +87,48 @@ export const registerDeviceToken = onCall(callableOptions, async (request) => {
   return {ok: true};
 });
 
+export const ownerSetUserRole = onCall(callableOptions, async (request) => {
+  const ownerUid = requireOwner(request);
+  await rateLimit(ownerUid, "setUserRole", 30);
+  const data = roleChangeSchema.parse(request.data);
+  if (data.uid === ownerUid && data.role !== "owner") {
+    throw new HttpsError(
+      "failed-precondition",
+      "CANNOT_CHANGE_OWN_OWNER_ROLE",
+    );
+  }
+
+  const auth = getAuth();
+  const target = await auth.getUser(data.uid);
+  const claims = claimsForRole(target.customClaims, data.role);
+  await auth.setCustomUserClaims(target.uid, claims);
+  await auth.revokeRefreshTokens(target.uid);
+
+  const isOwner = data.role === "owner";
+  const isAdmin = data.role === "manager" || isOwner;
+  await db.collection("users").doc(target.uid).set(
+    {
+      role: data.role,
+      isAdmin,
+      isOwner,
+      roleUpdatedAt: Timestamp.now(),
+      roleUpdatedBy: ownerUid,
+      updatedAt: Timestamp.now(),
+    },
+    {merge: true},
+  );
+  return {ok: true, role: data.role};
+});
+
 export const requestAccountDeletion = onCall(callableOptions, async (request) => {
   const uid = requireAuth(request);
   await rateLimit(uid, "deleteAccount", 2, 3600);
+  if (request.auth?.token.owner === true) {
+    throw new HttpsError(
+      "failed-precondition",
+      "OWNER_ACCOUNT_CANNOT_BE_DELETED",
+    );
+  }
 
   const [appointments, devices] = await Promise.all([
     db.collection("appointments").where("clientId", "==", uid).get(),
@@ -93,6 +155,8 @@ export const requestAccountDeletion = onCall(callableOptions, async (request) =>
       deletedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       isAdmin: false,
+      isOwner: false,
+      role: "client",
     },
     {merge: false},
   );

@@ -26,6 +26,14 @@ export function requireAdmin(request: CallableRequest<unknown>): string {
   return uid;
 }
 
+export function requireOwner(request: CallableRequest<unknown>): string {
+  const uid = requireAuth(request);
+  if (request.auth?.token.owner !== true) {
+    throw new HttpsError("permission-denied", "OWNER_REQUIRED");
+  }
+  return uid;
+}
+
 export function parseDate(value: string): Date {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) {

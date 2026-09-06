@@ -61,6 +61,9 @@ nel repository.
 
 - Catalogo consultabile senza account; registrazione obbligatoria per inviare
   una richiesta.
+- Ruoli: proprietario, gestore prenotazioni e cliente. Il proprietario ha
+  accesso completo e assegna i ruoli agli account esistenti; il gestore usa le
+  funzioni operative ma non può modificare permessi o proprietari.
 - Telefono obbligatorio; verifica SMS rinviata.
 - Accessi previsti: email/password, Google e Apple su iOS.
 - Nessun pagamento online al lancio; predisposizione futura per acconto Stripe.
@@ -84,7 +87,8 @@ nel repository.
 
 - Progetto Firebase production nuovo, posseduto dall'attività e ospitato in
   Europa dove supportato.
-- Amministratori iniziali: Alessio e un eventuale secondo account concordato.
+- Proprietario iniziale: Alessio; eventuali altri proprietari o gestori sono
+  assegnati dal proprietario dalla console.
 - Dominio, email ufficiale, dati legali e testi privacy ancora da definire.
 - Analytics solo aggregati e necessari; Crashlytics abilitato.
 - Le notifiche sulla lock screen mostrano soltanto studio, giorno e ora.

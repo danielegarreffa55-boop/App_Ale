@@ -16,8 +16,8 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if ownsUser(uid) || isAdmin();
-      // Profiles, notification flags and deletion are written by callable
-      // functions so a client can never inject admin-related fields.
+      // Profiles, notification flags and deletion are written by trusted
+      // backends so a client can never inject admin-related fields.
       allow create, update, delete: if false;
 
       match /devices/{deviceId} {

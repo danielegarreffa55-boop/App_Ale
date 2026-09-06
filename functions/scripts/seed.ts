@@ -8,8 +8,14 @@ const demoPassword = "DemoOnly-ChangeMe-123!";
 async function upsertUser(email: string, displayName: string) {
   const auth = getAuth();
   try {
-    return await auth.getUserByEmail(email);
-  } catch {
+    const existing = await auth.getUserByEmail(email);
+    return auth.updateUser(existing.uid, {
+      password: demoPassword,
+      displayName,
+      emailVerified: true,
+    });
+  } catch (error) {
+    if ((error as {code?: string}).code !== "auth/user-not-found") throw error;
     return auth.createUser({email, password: demoPassword, displayName, emailVerified: true});
   }
 }
@@ -24,7 +30,20 @@ async function main(): Promise<void> {
     upsertUser("admin@demo.local", "Admin Demo"),
     upsertUser("cliente@demo.local", "Cliente Demo"),
   ]);
-  await getAuth().setCustomUserClaims(admin.uid, {admin: true});
+  const emulatorUsers = await getAuth().listUsers(1000);
+  await Promise.all(
+    emulatorUsers.users
+      .filter((user) => !user.emailVerified)
+      .map((user) => getAuth().updateUser(user.uid, {emailVerified: true})),
+  );
+  await Promise.all([
+    getAuth().setCustomUserClaims(admin.uid, {
+      admin: true,
+      owner: true,
+      role: "owner",
+    }),
+    getAuth().setCustomUserClaims(client.uid, {role: "client"}),
+  ]);
   const db = getFirestore();
   const batch = db.batch();
   batch.set(db.collection("users").doc(admin.uid), {
@@ -34,6 +53,8 @@ async function main(): Promise<void> {
     email: admin.email,
     phone: "+390000000001",
     isAdmin: true,
+    isOwner: true,
+    role: "owner",
     notificationEnabled: false,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
@@ -45,6 +66,8 @@ async function main(): Promise<void> {
     email: client.email,
     phone: "+390000000002",
     isAdmin: false,
+    isOwner: false,
+    role: "client",
     notificationEnabled: false,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),

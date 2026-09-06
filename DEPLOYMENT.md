@@ -3,32 +3,41 @@
 ## Precondizioni
 
 - Brand, package name/bundle ID, contatti e testi legali approvati.
-- Progetto Firebase production con billing, Firestore, Auth, Functions, FCM, App Check e Crashlytics.
-- `firebase login`, `.firebaserc` locale e `config/production.json` non committato.
+- Account Google Cloud con billing attivo e permessi per creare progetto, Firestore, Cloud Run, Auth e service account.
+- `gcloud auth login`, `gcloud auth application-default login`, `firebase login` e `config/production.json` non committato.
 - Test automatici puliti e UAT su progetto staging separato.
 
-## Firebase
+## Backend Python e database reale
+
+```powershell
+.\infrastructure\deploy-gcp.ps1 `
+  -ProjectId 'PROJECT_ID_UNIVOCO' `
+  -BillingAccount 'XXXXXX-XXXXXX-XXXXXX' `
+  -GoogleCalendarId 'CALENDAR_ID'
+```
+
+Lo script crea o riutilizza il progetto, collega il billing, abilita le API, crea Firestore Native in `eur3` con protezione eliminazione, pubblica Rules/Indexes, crea un service account con privilegi minimi e distribuisce FastAPI su Cloud Run in `europe-west1`. Il servizio è raggiungibile via HTTPS, mentre tutte le rotte applicative richiedono un Firebase ID token valido.
+
+Creare `config/production.json` dal relativo esempio, inserire l'URL restituito in `BACKEND_API_URL` e compilare i valori pubblici Firebase. Quindi:
+
+```powershell
+flutter build appbundle --release --dart-define-from-file=config/production.json
+```
+
+Le callable Functions restano disponibili come fallback locale. I worker FCM/reminder TypeScript possono essere distribuiti separatamente finché non vengono sostituiti da worker Python:
 
 ```powershell
 npm --prefix functions ci
-npm --prefix functions run build
-firebase deploy --only firestore:rules,firestore:indexes
-firebase deploy --only functions
-flutter build web --release --dart-define-from-file=config/production.json
-npm run configure:web-fcm
-flutter build web --release --dart-define-from-file=config/production.json
-firebase deploy --only hosting
+firebase deploy --only functions:appointmentNotifications,functions:sendAppointmentReminders
 ```
-
-Il primo deploy dei parametri `defineString` richiede `GOOGLE_CALENDAR_ID`. Non committare i file `.env.<projectId>` creati dalla CLI. Verificare in Cloud Scheduler che `sendAppointmentReminders` sia attivo ogni 5 minuti; la funzione legge l'orario effettivo da `studio/config`.
 
 ## Google Calendar
 
 1. Nel progetto Google Cloud abilitare Google Calendar API.
 2. Nell'account Google dello studio creare il calendario dedicato `Appuntamenti Studio`.
-3. Dopo il deploy aprire Cloud Functions/Cloud Run e leggere il `Runtime service account` di `appointmentCalendarSync`. In Gen 2 è spesso l'account Compute predefinito, ma va verificato e non indovinato.
+3. Lo script stampa il runtime service account `salon-api@PROJECT_ID.iam.gserviceaccount.com`.
 4. In Google Calendar: Impostazioni calendario → Condividi con persone specifiche → aggiungere quell'email con permesso **Apportare modifiche agli eventi**.
-5. Copiare l'ID calendario da `Integra calendario` nel parametro `GOOGLE_CALENDAR_ID` e ridistribuire la funzione se necessario.
+5. Copiare l'ID calendario da `Integra calendario` nel parametro `GOOGLE_CALENDAR_ID` e ridistribuire Cloud Run se necessario.
 6. Confermare un appuntamento staging, verificare un solo evento, poi spostarlo e annullarlo verificando update/delete dello stesso event ID.
 
 L'account Google dello studio può aggiungere lo stesso calendario all'iPhone; Calendar iOS lo mostrerà senza EventKit e senza credenziali Google nell'app Flutter.

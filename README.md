@@ -1,6 +1,6 @@
 # Alessio Garreffa Hair
 
-Applicazione Flutter per iOS, Android e Web con interfaccia cliente, dashboard amministratore responsive e backend Firebase. `salon_booking` è soltanto il nome tecnico interno; contatti e identificatori di pubblicazione devono essere configurati prima della release.
+Applicazione Flutter per iOS, Android e Web con interfaccia cliente, dashboard amministratore responsive, API Python/FastAPI su Cloud Run e database Firestore. `salon_booking` è soltanto il nome tecnico interno; contatti e identificatori di pubblicazione devono essere configurati prima della release.
 
 ## Funzioni implementate
 
@@ -9,11 +9,11 @@ Applicazione Flutter per iOS, Android e Web con interfaccia cliente, dashboard a
 - Richiesta cliente sempre `PENDING_ADMIN`, anche su fasce già occupate; l'admin vede i conflitti e può accettare, rifiutare o fare una controproposta.
 - Accettazione/rifiuto della controproposta da parte del cliente.
 - Conferma e spostamento protetti da transazioni e lock Firestore a bucket da 5 minuti.
-- Dashboard admin Web/mobile: metriche, richieste, agenda, clienti, servizi, orari e impostazioni.
+- Dashboard Web/mobile per proprietario e gestori: metriche, richieste, agenda, clienti, servizi, orari e impostazioni. Solo il proprietario assegna i ruoli dalla sezione Staff e ruoli.
 - FCM multi-dispositivo, pulizia token invalidi e log idempotente delle notifiche.
 - Promemoria schedulato il giorno precedente in `Europe/Rome`.
 - Google Calendar solo backend, con event ID deterministico e aggiornamento/cancellazione idempotenti.
-- Security Rules deny-by-default, Custom Claims admin, App Check e rate limiting callable.
+- Security Rules deny-by-default, Custom Claims per proprietario/gestore e rate limiting lato API.
 - Emulator Suite, seed demo, test Flutter/backend/rules/race, CI GitHub Actions.
 
 ## Avvio rapido locale
@@ -37,10 +37,12 @@ flutter run -d chrome --dart-define-from-file=config/emulator.json
 
 Account demo creati esclusivamente nell'emulatore:
 
-- `admin@demo.local` / `DemoOnly-ChangeMe-123!`
+- `admin@demo.local` / `DemoOnly-ChangeMe-123!` (proprietario)
 - `cliente@demo.local` / `DemoOnly-ChangeMe-123!`
 
 Per ambiente, Firebase, Calendar, notifiche e release seguire [SETUP.md](SETUP.md) e [DEPLOYMENT.md](DEPLOYMENT.md). I requisiti approvati sono in [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md); le decisioni tecniche e il modello dati sono in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+La produzione usa `BACKEND_API_URL` per chiamare l'API HTTPS. Se il valore è vuoto, lo sviluppo locale mantiene il fallback alle callable Functions dell'emulatore.
 
 ## Qualità
 
@@ -48,6 +50,7 @@ Per ambiente, Firebase, Calendar, notifiche e release seguire [SETUP.md](SETUP.m
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
+backend\.venv\Scripts\python.exe -m pytest backend\tests -q
 npm --prefix functions run build
 npm --prefix functions test
 npm --prefix functions audit --omit=dev

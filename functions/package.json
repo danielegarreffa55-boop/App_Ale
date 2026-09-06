@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "emulators": "npm run build && firebase emulators:start",
     "seed": "tsx scripts/seed.ts",
-    "set-admin": "tsx scripts/set-admin.ts"
+    "set-admin": "tsx scripts/set-admin.ts",
+    "set-owner": "tsx scripts/set-owner.ts"
   },
   "dependencies": {
     "firebase-admin": "^14.3.0",
