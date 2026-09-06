@@ -15,6 +15,7 @@ import '../../../shared/async_value_view.dart';
 import '../../../shared/brand_logo.dart';
 import '../../appointments/domain/appointment_models.dart';
 import 'admin_day_calendar.dart';
+import 'owner_roles_section.dart';
 
 class AdminPage extends ConsumerStatefulWidget {
   const AdminPage({super.key});
@@ -62,8 +63,15 @@ class _AdminPageState extends ConsumerState<AdminPage> {
       error: (error, stack) => _AccessDenied(error: error),
       data: (allowed) {
         if (!allowed) return const _AccessDenied();
+        final isOwner = ref.watch(isOwnerProvider).value ?? false;
         final width = MediaQuery.sizeOf(context).width;
         final wide = width >= 980;
+        final labels = [..._labels, if (isOwner) 'Staff e ruoli'];
+        final icons = [
+          ..._icons,
+          if (isOwner) Icons.admin_panel_settings_outlined,
+        ];
+        if (_selected >= labels.length) _selected = 0;
         final content = switch (_selected) {
           0 => _DashboardSection(
             onNavigate: (section, agendaDayOffset) =>
@@ -77,7 +85,12 @@ class _AdminPageState extends ConsumerState<AdminPage> {
           3 => const _ClientsSection(),
           4 => const _ServicesSection(),
           5 => const _HoursSection(),
-          _ => const _SettingsSection(),
+          6 => const _SettingsSection(),
+          7 when isOwner => const OwnerRolesSection(),
+          _ => _DashboardSection(
+            onNavigate: (section, agendaDayOffset) =>
+                _selectSection(section, agendaDayOffset: agendaDayOffset),
+          ),
         };
         return Scaffold(
           appBar: AppBar(
@@ -103,11 +116,11 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                     Navigator.pop(context);
                   },
                   children: [
-                    const _AdminDrawerHeader(),
-                    for (var index = 0; index < _labels.length; index++)
+                    _AdminDrawerHeader(isOwner: isOwner),
+                    for (var index = 0; index < labels.length; index++)
                       NavigationDrawerDestination(
-                        icon: Icon(_icons[index]),
-                        label: Text(_labels[index]),
+                        icon: Icon(icons[index]),
+                        label: Text(labels[index]),
                       ),
                   ],
                 ),
@@ -122,10 +135,10 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                       : null,
                   onDestinationSelected: _selectSection,
                   destinations: [
-                    for (var index = 0; index < _labels.length; index++)
+                    for (var index = 0; index < labels.length; index++)
                       NavigationRailDestination(
-                        icon: Icon(_icons[index]),
-                        label: Text(_labels[index]),
+                        icon: Icon(icons[index]),
+                        label: Text(labels[index]),
                       ),
                   ],
                 ),
@@ -152,7 +165,9 @@ class _AdminPageState extends ConsumerState<AdminPage> {
 }
 
 class _AdminDrawerHeader extends StatelessWidget {
-  const _AdminDrawerHeader();
+  const _AdminDrawerHeader({required this.isOwner});
+
+  final bool isOwner;
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +179,7 @@ class _AdminDrawerHeader extends StatelessWidget {
           const BrandWordmark(),
           const SizedBox(height: 10),
           Text(
-            'Console amministratore',
+            isOwner ? 'Console proprietario' : 'Console gestore',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: AppTheme.ink.withValues(alpha: 0.62)),
           ),
@@ -1867,7 +1882,7 @@ class _ServicesSection extends ConsumerWidget {
   }
 }
 
-class _HoursSection extends StatelessWidget {
+class _HoursSection extends ConsumerWidget {
   const _HoursSection();
   static const _days = <String, String>{
     'monday': 'Lunedì',
@@ -1881,6 +1896,7 @@ class _HoursSection extends StatelessWidget {
 
   Future<void> _editDay(
     BuildContext context,
+    WidgetRef ref,
     String key,
     String label,
     Map<String, dynamic> current,
@@ -1944,17 +1960,16 @@ class _HoursSection extends StatelessWidget {
       ),
     );
     if (saved != true) return;
-    await FirebaseFirestore.instance.collection('studio').doc('config').set({
+    await ref.read(appointmentRepositoryProvider).saveStudioConfig({
       'openingHours': {
         ...allHours,
         key: {'enabled': enabled, 'open': open, 'close': close, 'breaks': []},
       },
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    });
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1997,8 +2012,14 @@ class _HoursSection extends StatelessWidget {
                       badge: enabled ? 'Aperto' : 'Chiuso',
                       badgeActive: enabled,
                       trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () =>
-                          _editDay(context, entry.key, entry.value, day, hours),
+                      onTap: () => _editDay(
+                        context,
+                        ref,
+                        entry.key,
+                        entry.value,
+                        day,
+                        hours,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -2011,14 +2032,14 @@ class _HoursSection extends StatelessWidget {
   }
 }
 
-class _SettingsSection extends StatefulWidget {
+class _SettingsSection extends ConsumerStatefulWidget {
   const _SettingsSection();
 
   @override
-  State<_SettingsSection> createState() => _SettingsSectionState();
+  ConsumerState<_SettingsSection> createState() => _SettingsSectionState();
 }
 
-class _SettingsSectionState extends State<_SettingsSection> {
+class _SettingsSectionState extends ConsumerState<_SettingsSection> {
   final _studioName = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
@@ -2050,7 +2071,7 @@ class _SettingsSectionState extends State<_SettingsSection> {
   }
 
   Future<void> _save() async {
-    await FirebaseFirestore.instance.collection('studio').doc('config').set({
+    await ref.read(appointmentRepositoryProvider).saveStudioConfig({
       'studioName': _studioName.text.trim(),
       'supportEmail': _email.text.trim(),
       'supportPhone': _phone.text.trim(),
@@ -2065,8 +2086,7 @@ class _SettingsSectionState extends State<_SettingsSection> {
         _cancellationNoticeHours,
         24,
       ).clamp(0, 720),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    });
     if (mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Impostazioni salvate.')));

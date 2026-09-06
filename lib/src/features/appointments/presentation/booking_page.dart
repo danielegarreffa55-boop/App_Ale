@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,27 @@ import '../../../core/utils/date_time_x.dart';
 import '../../../providers.dart';
 import '../../../shared/async_value_view.dart';
 import '../domain/appointment_models.dart';
+
+String bookingRequestErrorMessage(Object error) {
+  if (error is! FirebaseFunctionsException) {
+    return 'Non siamo riusciti a inviare la richiesta. Riprova tra poco.';
+  }
+  return switch (error.message) {
+    'EMAIL_NOT_VERIFIED' => 'Verifica l\'email dal link ricevuto, poi riprova.',
+    'PROFILE_REQUIRED' =>
+      'Completa il profilo con il numero di telefono prima di prenotare.',
+    'DATE_TOO_SOON' =>
+      'Questo orario è troppo vicino. Scegli un orario successivo.',
+    'DATE_OUT_OF_RANGE' => 'Questo orario non rientra nel periodo prenotabile.',
+    'SERVICE_NOT_FOUND' =>
+      'Il servizio scelto non è più disponibile. Selezionane un altro.',
+    'RATE_LIMITED' =>
+      'Hai inviato troppe richieste. Attendi qualche minuto e riprova.',
+    _ when error.code == 'unauthenticated' =>
+      'La sessione è scaduta. Accedi di nuovo e riprova.',
+    _ => 'Non siamo riusciti a inviare la richiesta. Riprova tra poco.',
+  };
+}
 
 class BookingPage extends ConsumerStatefulWidget {
   const BookingPage({super.key});
@@ -93,9 +115,43 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       context.go('/appointments');
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Invio non riuscito: $error')));
+        final emailNotVerified =
+            error is FirebaseFunctionsException &&
+            error.message == 'EMAIL_NOT_VERIFIED';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(bookingRequestErrorMessage(error)),
+            action: emailNotVerified
+                ? SnackBarAction(
+                    label: 'Reinvia email',
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(authRepositoryProvider)
+                            .resendEmailVerification();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Email di verifica inviata.'),
+                            ),
+                          );
+                        }
+                      } catch (_) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Invio email non riuscito. Riprova dal profilo.',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  )
+                : null,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _submitting = false);

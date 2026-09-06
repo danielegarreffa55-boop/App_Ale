@@ -5,7 +5,7 @@ import {getFirestore, Timestamp} from "firebase-admin/firestore";
 async function main(): Promise<void> {
   const email = process.argv[2]?.trim().toLowerCase();
   if (!email) {
-    throw new Error("Uso: npm run set-admin -- amministratore@example.it");
+    throw new Error("Uso: npm run set-owner -- proprietario@example.it");
   }
   if (getApps().length === 0) {
     initializeApp({credential: applicationDefault()});
@@ -14,19 +14,19 @@ async function main(): Promise<void> {
   await getAuth().setCustomUserClaims(user.uid, {
     ...(user.customClaims || {}),
     admin: true,
-    owner: false,
-    role: "manager",
+    owner: true,
+    role: "owner",
   });
   await getFirestore().collection("users").doc(user.uid).set(
     {
       isAdmin: true,
-      isOwner: false,
-      role: "manager",
+      isOwner: true,
+      role: "owner",
       roleUpdatedAt: Timestamp.now(),
     },
     {merge: true},
   );
-  console.log(`Ruolo GESTORE assegnato a ${email} (${user.uid}).`);
+  console.log(`Ruolo PROPRIETARIO assegnato a ${email} (${user.uid}).`);
   console.log("L'utente deve uscire e rientrare per aggiornare il token.");
 }
 
