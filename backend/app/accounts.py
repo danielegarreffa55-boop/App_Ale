@@ -1,164 +1,175 @@
 from __future__ import annotations
 
-from hashlib import sha256
+from datetime import timedelta
 from typing import Any
+from uuid import uuid4
 
-from firebase_admin import auth
-from google.cloud import firestore
-from google.cloud.firestore import Client
-from google.cloud.firestore_v1.base_query import FieldFilter
+from pymongo.database import Database
+from pymongo.errors import DuplicateKeyError
 
-from .errors import failed_precondition, not_found
-from .firebase import ensure_firebase_app
+from . import auth
+from .errors import ApiError, failed_precondition, not_found
 from .scheduling import utc_now
 
 
-def _commit_in_chunks(db: Client, operations: list[tuple[str, Any, Any]]) -> None:
-    for start in range(0, len(operations), 400):
-        batch = db.batch()
-        for operation, reference, data in operations[start : start + 400]:
-            if operation == "update":
-                batch.update(reference, data)
-            elif operation == "delete":
-                batch.delete(reference)
-            else:
-                batch.set(reference, data)
-        batch.commit()
+def public_user(user: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(user["_id"]),
+        "email": user.get("email", ""),
+        "firstName": user.get("firstName", ""),
+        "lastName": user.get("lastName", ""),
+        "displayName": (
+            f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()
+        ),
+        "phone": user.get("phone", ""),
+        "role": user.get("role", "client"),
+        "emailVerified": user.get("emailVerified") is True,
+        "createdAt": user.get("createdAt"),
+    }
 
 
-def ensure_profile(db: Client, user: dict[str, Any], data: dict[str, Any]) -> None:
-    uid = str(user["uid"])
-    reference = db.collection("users").document(uid)
-    existing = reference.get().to_dict() or {}
+def register(
+    db: Database[dict[str, Any]], data: dict[str, Any]
+) -> tuple[dict[str, Any], str]:
     now = utc_now()
-    reference.set(
-        {
-            "uid": uid,
-            "firstName": data["firstName"].strip(),
-            "lastName": data["lastName"].strip(),
-            "email": str(user.get("email") or "").lower(),
-            "phone": data["phone"].strip(),
-            "notificationEnabled": existing.get("notificationEnabled") is True,
-            "privacyAcceptedAt": existing.get("privacyAcceptedAt") or now,
-            "createdAt": existing.get("createdAt") or now,
-            "updatedAt": now,
-            "isAdmin": existing.get("isAdmin") is True,
-            "isOwner": existing.get("isOwner") is True,
-            "role": existing.get("role") or "client",
-        },
-        merge=True,
+    user = {
+        "_id": str(uuid4()),
+        "email": str(data["email"]).strip().lower(),
+        "emailLower": str(data["email"]).strip().lower(),
+        "firstName": data["firstName"].strip(),
+        "lastName": data["lastName"].strip(),
+        "phone": data["phone"].strip(),
+        "passwordHash": auth.hash_password(data["password"]),
+        "role": "client",
+        "emailVerified": False,
+        "privacyAcceptedAt": now,
+        "sessionVersion": 0,
+        "createdAt": now,
+        "updatedAt": now,
+        "deletedAt": None,
+    }
+    try:
+        db.users.insert_one(user)
+    except DuplicateKeyError as error:
+        raise ApiError(409, "already-exists", "EMAIL_ALREADY_IN_USE") from error
+    token = auth.create_opaque_token(
+        db, user["_id"], "verify-email", timedelta(hours=24)
     )
+    return user, token
 
 
-def register_device(db: Client, uid: str, token: str, platform: str) -> None:
-    token_id = sha256(token.encode("utf-8")).hexdigest()
-    now = utc_now()
-    db.collection("users").document(uid).collection("devices").document(token_id).set(
-        {
-            "token": token,
-            "platform": platform,
-            "updatedAt": now,
-            "createdAt": now,
-        },
-        merge=True,
-    )
-    db.collection("users").document(uid).set(
-        {"notificationEnabled": True, "updatedAt": now},
-        merge=True,
-    )
-
-
-def claims_for_role(
-    current_claims: dict[str, Any] | None,
-    role: str,
+def authenticate(
+    db: Database[dict[str, Any]], email: str, password: str
 ) -> dict[str, Any]:
-    claims = dict(current_claims or {})
-    claims.pop("admin", None)
-    claims.pop("owner", None)
-    claims.pop("role", None)
-    claims["role"] = role
-    if role in {"manager", "owner"}:
-        claims["admin"] = True
-    if role == "owner":
-        claims["owner"] = True
-    return claims
+    user = db.users.find_one({"emailLower": email.strip().lower(), "deletedAt": None})
+    password_hash = user.get("passwordHash", "") if user else auth.dummy_password_hash()
+    if not auth.verify_password(password_hash, password) or not user:
+        raise ApiError(401, "unauthenticated", "INVALID_CREDENTIALS")
+    if auth.password_needs_rehash(user["passwordHash"]):
+        db.users.update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {
+                    "passwordHash": auth.hash_password(password),
+                    "updatedAt": utc_now(),
+                }
+            },
+        )
+    return user
+
+
+def update_profile(
+    db: Database[dict[str, Any]], user_id: str, data: dict[str, Any]
+) -> dict[str, Any]:
+    db.users.update_one(
+        {"_id": user_id, "deletedAt": None},
+        {
+            "$set": {
+                "firstName": data["firstName"].strip(),
+                "lastName": data["lastName"].strip(),
+                "phone": data["phone"].strip(),
+                "updatedAt": utc_now(),
+            }
+        },
+    )
+    user = db.users.find_one({"_id": user_id, "deletedAt": None})
+    if not user:
+        raise not_found("USER_NOT_FOUND")
+    return user
+
+
+def verify_email(db: Database[dict[str, Any]], token: str) -> dict[str, Any]:
+    user = auth.consume_opaque_token(db, token, "verify-email")
+    db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "emailVerified": True,
+                "emailVerifiedAt": utc_now(),
+                "updatedAt": utc_now(),
+            }
+        },
+    )
+    return db.users.find_one({"_id": user["_id"]}) or user
 
 
 def set_role(
-    db: Client,
-    owner_uid: str,
-    target_uid: str,
-    role: str,
+    db: Database[dict[str, Any]], owner_id: str, target_id: str, role: str
 ) -> None:
-    if owner_uid == target_uid and role != "owner":
+    if owner_id == target_id and role != "owner":
         raise failed_precondition("CANNOT_CHANGE_OWN_OWNER_ROLE")
-    ensure_firebase_app()
-    try:
-        target = auth.get_user(target_uid)
-    except auth.UserNotFoundError as error:
-        raise not_found("USER_NOT_FOUND") from error
-    auth.set_custom_user_claims(
-        target_uid,
-        claims_for_role(target.custom_claims, role),
-    )
-    auth.revoke_refresh_tokens(target_uid)
-    is_owner = role == "owner"
-    db.collection("users").document(target_uid).set(
+    result = db.users.update_one(
+        {"_id": target_id, "deletedAt": None},
         {
-            "role": role,
-            "isAdmin": role == "manager" or is_owner,
-            "isOwner": is_owner,
-            "roleUpdatedAt": utc_now(),
-            "roleUpdatedBy": owner_uid,
-            "updatedAt": utc_now(),
+            "$set": {
+                "role": role,
+                "roleUpdatedAt": utc_now(),
+                "roleUpdatedBy": owner_id,
+                "updatedAt": utc_now(),
+            },
+            "$inc": {"sessionVersion": 1},
         },
-        merge=True,
+    )
+    if result.matched_count != 1:
+        raise not_found("USER_NOT_FOUND")
+    db.refresh_tokens.update_many(
+        {"userId": target_id, "revokedAt": None},
+        {"$set": {"revokedAt": utc_now(), "revokeReason": "ROLE_CHANGED"}},
     )
 
 
-def delete_account(db: Client, user: dict[str, Any]) -> None:
-    uid = str(user["uid"])
-    if user.get("owner") is True:
+def delete_account(db: Database[dict[str, Any]], user: dict[str, Any]) -> None:
+    user_id = str(user["_id"])
+    if user.get("role") == "owner":
         raise failed_precondition("OWNER_ACCOUNT_CANNOT_BE_DELETED")
-    user_ref = db.collection("users").document(uid)
-    operations: list[tuple[str, Any, Any]] = []
-    for snapshot in (
-        db.collection("appointments")
-        .where(filter=FieldFilter("clientId", "==", uid))
-        .stream()
-    ):
-        operations.append(
-            (
-                "update",
-                snapshot.reference,
-                {
-                    "clientName": "Cliente eliminato",
-                    "clientPhone": firestore.DELETE_FIELD,
-                    "updatedAt": utc_now(),
-                },
-            )
-        )
-    for snapshot in user_ref.collection("devices").stream():
-        operations.append(("delete", snapshot.reference, None))
-    operations.append(
-        (
-            "set",
-            user_ref,
-            {
-                "uid": uid,
+    now = utc_now()
+    db.appointments.update_many(
+        {"clientId": user_id},
+        {
+            "$set": {
+                "clientName": "Cliente eliminato",
+                "clientPhone": None,
+                "updatedAt": now,
+            }
+        },
+    )
+    db.users.update_one(
+        {"_id": user_id},
+        {
+            "$set": {
+                "email": "",
+                "emailLower": f"deleted-{user_id}@invalid.local",
                 "firstName": "",
                 "lastName": "",
-                "email": "",
                 "phone": "",
-                "notificationEnabled": False,
-                "deletedAt": utc_now(),
-                "updatedAt": utc_now(),
-                "isAdmin": False,
-                "isOwner": False,
+                "passwordHash": "!deleted",
                 "role": "client",
+                "deletedAt": now,
+                "updatedAt": now,
             },
-        )
+            "$inc": {"sessionVersion": 1},
+        },
     )
-    _commit_in_chunks(db, operations)
-    ensure_firebase_app()
-    auth.delete_user(uid)
+    db.refresh_tokens.delete_many({"userId": user_id})
+    db.auth_tokens.delete_many({"userId": user_id})
+    db.notification_logs.delete_many({"userId": user_id})

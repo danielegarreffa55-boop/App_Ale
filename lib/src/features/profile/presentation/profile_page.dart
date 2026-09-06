@@ -19,8 +19,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     setState(() => _notificationBusy = true);
     try {
       final service = ref.read(notificationServiceProvider);
-      final enabled = await service.requestAndRegister();
-      await service.listenForTokenRefresh();
+      final enabled = await service.requestAndRegister(
+        userId: ref.read(authRepositoryProvider).currentUser?.uid,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

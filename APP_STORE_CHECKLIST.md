@@ -12,15 +12,15 @@
 
 - [ ] Apple Developer Program attivo, contratti e dati fiscali completati.
 - [ ] Team, certificate distribution e provisioning profile.
-- [ ] APNs Auth Key caricata su Firebase e testata su device reale.
+- [ ] APNs Auth Key caricata su OneSignal e testata su device reale.
 - [ ] Sign in with Apple non richiesto: l'MVP usa soltanto email/password.
 - [ ] `flutter build ipa --release` eseguito su macOS e archivio validato in Xcode.
 
 ## App Privacy e review
 
 - [ ] Dichiarare contact info (nome/email/telefono) e user content (appuntamenti), con finalità App Functionality.
-- [ ] Dichiarare diagnostic data solo se Crashlytics è abilitato; no tracking cross-app.
-- [ ] Compilare privacy nutrition labels coerenti con SDK Firebase effettivamente abilitati.
+- [ ] Dichiarare eventuali dati diagnostici realmente raccolti; no tracking cross-app.
+- [ ] Compilare le privacy nutrition labels includendo MongoDB Atlas, OneSignal e il provider cloud/email effettivamente usati.
 - [ ] Fornire account demo review non admin e istruzioni per controproposta; predisporre admin demo se la dashboard è parte della review.
 - [ ] Eliminazione account accessibile nell'app verificata end-to-end.
 - [ ] Testare Dynamic Type, VoiceOver, contrasto, offline/error state e permessi contestuali.

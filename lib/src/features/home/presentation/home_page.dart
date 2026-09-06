@@ -15,6 +15,10 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(clientAppointmentsProvider);
     final user = ref.watch(authStateProvider).value;
+    final displayName = user?.displayName;
+    final firstName = displayName != null && displayName.isNotEmpty
+        ? displayName.split(' ').first
+        : null;
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(clientAppointmentsProvider),
       child: ListView(
@@ -26,7 +30,7 @@ class HomePage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ciao${user?.displayName?.isNotEmpty == true ? ', ${user!.displayName!.split(' ').first}' : ''}',
+                  'Ciao${firstName == null ? '' : ', $firstName'}',
                   style: Theme.of(context).textTheme.displaySmall,
                 ),
                 const SizedBox(height: 8),

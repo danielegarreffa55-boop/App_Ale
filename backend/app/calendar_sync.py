@@ -6,9 +6,9 @@ from hashlib import sha256
 from typing import Any
 
 import google.auth
-from google.cloud.firestore import Client
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from pymongo.database import Database
 
 from .config import settings
 from .scheduling import aware_utc, utc_now
@@ -28,16 +28,20 @@ def _service() -> Any:
 
 
 def sync_event(
-    db: Client,
+    db: Database[dict[str, Any]],
     appointment_id: str,
     appointment: dict[str, Any],
 ) -> None:
     calendar_id = settings().calendar_id
-    reference = db.collection("appointments").document(appointment_id)
     if not calendar_id:
-        reference.set(
-            {"calendarSyncStatus": "NOT_CONFIGURED", "calendarSyncAt": utc_now()},
-            merge=True,
+        db.appointments.update_one(
+            {"_id": appointment_id},
+            {
+                "$set": {
+                    "calendarSyncStatus": "NOT_CONFIGURED",
+                    "calendarSyncAt": utc_now(),
+                }
+            },
         )
         return
     start = appointment.get("confirmedStartAt")
@@ -59,79 +63,70 @@ def sync_event(
             )
             if item
         ),
-        "start": {
-            "dateTime": aware_utc(start).isoformat(),
-            "timeZone": "Europe/Rome",
-        },
-        "end": {
-            "dateTime": aware_utc(end).isoformat(),
-            "timeZone": "Europe/Rome",
-        },
+        "start": {"dateTime": aware_utc(start).isoformat(), "timeZone": "Europe/Rome"},
+        "end": {"dateTime": aware_utc(end).isoformat(), "timeZone": "Europe/Rome"},
         "extendedProperties": {"private": {"appointmentId": appointment_id}},
     }
     try:
         service = _service()
         try:
             service.events().update(
-                calendarId=calendar_id,
-                eventId=event_id,
-                body=body,
+                calendarId=calendar_id, eventId=event_id, body=body
             ).execute()
         except HttpError as error:
             if error.resp.status != 404:
                 raise
             try:
                 service.events().insert(
-                    calendarId=calendar_id,
-                    body={"id": event_id, **body},
+                    calendarId=calendar_id, body={"id": event_id, **body}
                 ).execute()
             except HttpError as insert_error:
                 if insert_error.resp.status != 409:
                     raise
                 service.events().update(
-                    calendarId=calendar_id,
-                    eventId=event_id,
-                    body=body,
+                    calendarId=calendar_id, eventId=event_id, body=body
                 ).execute()
-        reference.set(
+        db.appointments.update_one(
+            {"_id": appointment_id},
             {
-                "googleCalendarEventId": event_id,
-                "calendarSyncStatus": "SYNCED",
-                "calendarSyncAt": utc_now(),
+                "$set": {
+                    "googleCalendarEventId": event_id,
+                    "calendarSyncStatus": "SYNCED",
+                    "calendarSyncAt": utc_now(),
+                }
             },
-            merge=True,
         )
     except Exception as error:
         logger.exception("Google Calendar sync failed for %s", appointment_id)
-        reference.set(
+        db.appointments.update_one(
+            {"_id": appointment_id},
             {
-                "calendarSyncStatus": "ERROR",
-                "calendarSyncError": str(error)[:500],
-                "calendarSyncAt": utc_now(),
+                "$set": {
+                    "calendarSyncStatus": "ERROR",
+                    "calendarSyncError": str(error)[:500],
+                    "calendarSyncAt": utc_now(),
+                }
             },
-            merge=True,
         )
 
 
 def delete_event(
-    db: Client,
+    db: Database[dict[str, Any]],
     appointment_id: str,
     appointment: dict[str, Any],
 ) -> None:
-    calendar_id = settings().calendar_id
-    if not calendar_id:
+    if not settings().calendar_id:
         return
     event_id = appointment.get("googleCalendarEventId") or _event_id(appointment_id)
     try:
         _service().events().delete(
-            calendarId=calendar_id,
-            eventId=event_id,
+            calendarId=settings().calendar_id, eventId=event_id
         ).execute()
     except HttpError as error:
         if error.resp.status not in {404, 410}:
             logger.exception("Google Calendar delete failed for %s", appointment_id)
             return
-    db.collection("appointments").document(appointment_id).set(
-        {"calendarSyncStatus": "DELETED", "calendarSyncAt": utc_now()},
-        merge=True,
+    db.appointments.update_one(
+        {"_id": appointment_id},
+        {"$set": {"calendarSyncStatus": "DELETED", "calendarSyncAt": utc_now()}},
     )

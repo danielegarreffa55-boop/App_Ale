@@ -14,5 +14,4 @@ COPY app ./app
 RUN useradd --create-home --uid 10001 appuser
 USER appuser
 
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" --workers 2
-
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" --workers 1

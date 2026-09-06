@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,21 +5,27 @@ import '../features/admin/presentation/admin_page.dart';
 import '../features/appointments/presentation/appointments_page.dart';
 import '../features/appointments/presentation/booking_page.dart';
 import '../features/auth/presentation/auth_page.dart';
+import '../features/auth/presentation/account_action_pages.dart';
+import '../features/auth/data/auth_repository.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/profile/presentation/profile_page.dart';
 import '../shared/client_shell.dart';
 import '../shared/setup_required_page.dart';
 
-GoRouter createAppRouter(bool firebaseReady) {
+GoRouter createAppRouter(bool backendReady, AuthRepository authRepository) {
   return GoRouter(
-    initialLocation: '/',
+    refreshListenable: authRepository,
     redirect: (context, state) {
-      if (!firebaseReady) {
+      if (!backendReady) {
         return state.matchedLocation == '/setup' ? null : '/setup';
       }
       if (state.matchedLocation == '/setup') return '/';
-      final signedIn = FirebaseAuth.instance.currentUser != null;
-      final publicRoute = state.matchedLocation == '/';
+      final signedIn = authRepository.currentUser != null;
+      final publicRoute = {
+        '/',
+        '/verify-email',
+        '/reset-password',
+      }.contains(state.matchedLocation);
       if (!signedIn && !publicRoute) return '/';
       return null;
     },
@@ -30,6 +35,16 @@ GoRouter createAppRouter(bool firebaseReady) {
         builder: (context, state) => const SetupRequiredPage(),
       ),
       GoRoute(path: '/', builder: (context, state) => const AuthPage()),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) =>
+            VerifyEmailPage(token: state.uri.queryParameters['token'] ?? ''),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) =>
+            ResetPasswordPage(token: state.uri.queryParameters['token'] ?? ''),
+      ),
       ShellRoute(
         builder: (context, state, child) => ClientShell(child: child),
         routes: [

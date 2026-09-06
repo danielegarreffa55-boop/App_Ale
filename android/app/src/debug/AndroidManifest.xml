@@ -4,6 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Firebase Emulator Suite uses local HTTP endpoints during development. -->
+    <!-- The local FastAPI server uses HTTP during development. -->
     <application android:usesCleartextTraffic="true" />
 </manifest>

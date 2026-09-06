@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 enum AppointmentStatus {
   pendingAdmin('PENDING_ADMIN', 'In attesa di conferma'),
   counterProposed('COUNTER_PROPOSED', 'Controproposta dello studio'),
@@ -20,7 +18,6 @@ enum AppointmentStatus {
 }
 
 DateTime? _date(Object? value) => switch (value) {
-  Timestamp timestamp => timestamp.toDate().toUtc(),
   DateTime dateTime => dateTime.toUtc(),
   String text => DateTime.tryParse(text)?.toUtc(),
   _ => null,
@@ -41,12 +38,9 @@ class SalonService {
     this.priceCents,
   });
 
-  factory SalonService.fromDocument(
-    DocumentSnapshot<Map<String, dynamic>> document,
-  ) {
-    final data = document.data() ?? const <String, dynamic>{};
+  factory SalonService.fromJson(Map<String, dynamic> data) {
     return SalonService(
-      id: document.id,
+      id: data['id'] as String? ?? '',
       name: data['name'] as String? ?? '',
       category: data['category'] as String? ?? 'Altri servizi',
       description: data['description'] as String? ?? '',
@@ -105,13 +99,10 @@ class Appointment {
     this.clientPhone,
   });
 
-  factory Appointment.fromDocument(
-    DocumentSnapshot<Map<String, dynamic>> document,
-  ) {
-    final data = document.data() ?? const <String, dynamic>{};
+  factory Appointment.fromJson(Map<String, dynamic> data) {
     final requestedStart = _date(data['requestedStartAt']) ?? DateTime.now();
     return Appointment(
-      id: document.id,
+      id: data['id'] as String? ?? '',
       clientId: data['clientId'] as String? ?? '',
       serviceId: data['serviceId'] as String? ?? '',
       serviceName: data['serviceName'] as String? ?? 'Servizio',
@@ -174,13 +165,10 @@ class AgendaBlock {
     required this.active,
   });
 
-  factory AgendaBlock.fromDocument(
-    DocumentSnapshot<Map<String, dynamic>> document,
-  ) {
-    final data = document.data() ?? const <String, dynamic>{};
+  factory AgendaBlock.fromJson(Map<String, dynamic> data) {
     final startAt = _date(data['startAt']) ?? DateTime.now().toUtc();
     return AgendaBlock(
-      id: document.id,
+      id: data['id'] as String? ?? '',
       startAt: startAt,
       endAt: _date(data['endAt']) ?? startAt,
       reason: data['reason'] as String? ?? 'Fascia bloccata',

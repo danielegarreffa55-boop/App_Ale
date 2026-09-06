@@ -6,10 +6,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from firebase_admin import auth
-
-from app.accounts import claims_for_role
-from app.firebase import database, ensure_firebase_app
+from app.auth import revoke_all_sessions
+from app.database import database
 from app.scheduling import utc_now
 
 
@@ -18,23 +16,22 @@ def main() -> None:
     parser.add_argument("email")
     args = parser.parse_args()
     email = args.email.strip().lower()
-    ensure_firebase_app()
-    user = auth.get_user_by_email(email)
-    auth.set_custom_user_claims(
-        user.uid,
-        claims_for_role(user.custom_claims, "owner"),
-    )
-    database().collection("users").document(user.uid).set(
+    db = database()
+    user = db.users.find_one({"emailLower": email, "deletedAt": None})
+    if not user:
+        raise SystemExit(f"Utente non trovato: {email}")
+    db.users.update_one(
+        {"_id": user["_id"]},
         {
-            "isAdmin": True,
-            "isOwner": True,
-            "role": "owner",
-            "roleUpdatedAt": utc_now(),
+            "$set": {
+                "role": "owner",
+                "roleUpdatedAt": utc_now(),
+                "updatedAt": utc_now(),
+            }
         },
-        merge=True,
     )
-    auth.revoke_refresh_tokens(user.uid)
-    print(f"Ruolo PROPRIETARIO assegnato a {email} ({user.uid}).")
+    revoke_all_sessions(db, str(user["_id"]))
+    print(f"Ruolo PROPRIETARIO assegnato a {email} ({user['_id']}).")
     print("L'utente deve uscire e rientrare per aggiornare il token.")
 
 

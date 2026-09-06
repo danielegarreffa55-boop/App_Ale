@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1970,6 +1969,13 @@ class _HoursSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(studioConfigProvider).value;
+    if (config == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final hours = Map<String, dynamic>.from(
+      config['openingHours'] as Map? ?? const {},
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1979,52 +1985,38 @@ class _HoursSection extends ConsumerWidget {
         ),
         const SizedBox(height: 20),
         Expanded(
-          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('studio')
-                .doc('config')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final hours = Map<String, dynamic>.from(
-                snapshot.data!.data()?['openingHours'] as Map? ?? const {},
+          child: ListView(
+            children: _days.entries.map((entry) {
+              final day = Map<String, dynamic>.from(
+                hours[entry.key] as Map? ?? const {},
               );
-              return ListView(
-                children: _days.entries.map((entry) {
-                  final day = Map<String, dynamic>.from(
-                    hours[entry.key] as Map? ?? const {},
-                  );
-                  final enabled = day['enabled'] as bool? ?? false;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _AdminListCard(
-                      icon: enabled
-                          ? Icons.wb_sunny_outlined
-                          : Icons.nightlight_outlined,
-                      title: entry.value,
-                      details: [
-                        enabled
-                            ? '${day['open'] ?? '09:00'} – ${day['close'] ?? '18:00'}'
-                            : 'Nessun orario configurato',
-                      ],
-                      badge: enabled ? 'Aperto' : 'Chiuso',
-                      badgeActive: enabled,
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => _editDay(
-                        context,
-                        ref,
-                        entry.key,
-                        entry.value,
-                        day,
-                        hours,
-                      ),
-                    ),
-                  );
-                }).toList(),
+              final enabled = day['enabled'] as bool? ?? false;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _AdminListCard(
+                  icon: enabled
+                      ? Icons.wb_sunny_outlined
+                      : Icons.nightlight_outlined,
+                  title: entry.value,
+                  details: [
+                    enabled
+                        ? '${day['open'] ?? '09:00'} – ${day['close'] ?? '18:00'}'
+                        : 'Nessun orario configurato',
+                  ],
+                  badge: enabled ? 'Aperto' : 'Chiuso',
+                  badgeActive: enabled,
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _editDay(
+                    context,
+                    ref,
+                    entry.key,
+                    entry.value,
+                    day,
+                    hours,
+                  ),
+                ),
               );
-            },
+            }).toList(),
           ),
         ),
       ],
@@ -2095,150 +2087,135 @@ class _SettingsSectionState extends ConsumerState<_SettingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      future: FirebaseFirestore.instance
-          .collection('studio')
-          .doc('config')
-          .get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!_loaded) {
-          final data = snapshot.data?.data() ?? const <String, dynamic>{};
-          _studioName.text =
-              data['studioName'] as String? ?? AppConfig.studioName;
-          _email.text =
-              data['supportEmail'] as String? ?? AppConfig.supportEmail;
-          _phone.text =
-              data['supportPhone'] as String? ?? AppConfig.supportPhone;
-          _address.text = data['address'] as String? ?? AppConfig.address;
-          _reminder.text =
-              data['reminderTime'] as String? ?? AppConfig.reminderTime;
-          _slotMinutes.text = '${(data['slotMinutes'] as num?)?.toInt() ?? 30}';
-          _minimumLeadMinutes.text =
-              '${(data['minimumLeadMinutes'] as num?)?.toInt() ?? 120}';
-          _bookingHorizonDays.text =
-              '${(data['bookingHorizonDays'] as num?)?.toInt() ?? 90}';
-          _cancellationNoticeHours.text =
-              '${(data['cancellationNoticeHours'] as num?)?.toInt() ?? 24}';
-          _loaded = true;
-        }
-        return ListView(
-          children: [
-            const _SectionHeader(
-              'Impostazioni',
-              subtitle: 'Brand, contatti e promemoria',
-            ),
-            const SizedBox(height: 20),
-            Align(
-              alignment: Alignment.topLeft,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Dati dello studio',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _studioName,
-                          decoration: const InputDecoration(
-                            labelText: 'Nome studio',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _email,
-                          decoration: const InputDecoration(
-                            labelText: 'Email supporto',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _phone,
-                          decoration: const InputDecoration(
-                            labelText: 'Telefono',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _address,
-                          decoration: const InputDecoration(
-                            labelText: 'Indirizzo',
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Divider(),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Automazioni',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _reminder,
-                          decoration: const InputDecoration(
-                            labelText: 'Promemoria giorno prima (HH:mm)',
-                            helperText: 'Timezone Europe/Rome',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _slotMinutes,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Intervallo richieste (minuti)',
-                            helperText: 'Valore iniziale: 30 minuti',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _minimumLeadMinutes,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Anticipo minimo (minuti)',
-                            helperText: 'Valore iniziale: 120 minuti',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _bookingHorizonDays,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Finestra prenotabile (giorni)',
-                            helperText: 'Valore iniziale: 90 giorni',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _cancellationNoticeHours,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Limite annullamento cliente (ore)',
-                            helperText: 'Valore iniziale: 24 ore',
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed: _save,
-                          icon: const Icon(Icons.save_outlined),
-                          label: const Text(AppStrings.save),
-                        ),
-                      ],
+    final data = ref.watch(studioConfigProvider).value;
+    if (data == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (!_loaded) {
+      _studioName.text = data['studioName'] as String? ?? AppConfig.studioName;
+      _email.text = data['supportEmail'] as String? ?? AppConfig.supportEmail;
+      _phone.text = data['supportPhone'] as String? ?? AppConfig.supportPhone;
+      _address.text = data['address'] as String? ?? AppConfig.address;
+      _reminder.text =
+          data['reminderTime'] as String? ?? AppConfig.reminderTime;
+      _slotMinutes.text = '${(data['slotMinutes'] as num?)?.toInt() ?? 30}';
+      _minimumLeadMinutes.text =
+          '${(data['minimumLeadMinutes'] as num?)?.toInt() ?? 120}';
+      _bookingHorizonDays.text =
+          '${(data['bookingHorizonDays'] as num?)?.toInt() ?? 90}';
+      _cancellationNoticeHours.text =
+          '${(data['cancellationNoticeHours'] as num?)?.toInt() ?? 24}';
+      _loaded = true;
+    }
+    return ListView(
+      children: [
+        const _SectionHeader(
+          'Impostazioni',
+          subtitle: 'Brand, contatti e promemoria',
+        ),
+        const SizedBox(height: 20),
+        Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Dati dello studio',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _studioName,
+                      decoration: const InputDecoration(
+                        labelText: 'Nome studio',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _email,
+                      decoration: const InputDecoration(
+                        labelText: 'Email supporto',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _phone,
+                      decoration: const InputDecoration(labelText: 'Telefono'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _address,
+                      decoration: const InputDecoration(labelText: 'Indirizzo'),
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Automazioni',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _reminder,
+                      decoration: const InputDecoration(
+                        labelText: 'Promemoria giorno prima (HH:mm)',
+                        helperText: 'Timezone Europe/Rome',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _slotMinutes,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Intervallo richieste (minuti)',
+                        helperText: 'Valore iniziale: 30 minuti',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _minimumLeadMinutes,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Anticipo minimo (minuti)',
+                        helperText: 'Valore iniziale: 120 minuti',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _bookingHorizonDays,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Finestra prenotabile (giorni)',
+                        helperText: 'Valore iniziale: 90 giorni',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _cancellationNoticeHours,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Limite annullamento cliente (ore)',
+                        helperText: 'Valore iniziale: 24 ore',
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: _save,
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text(AppStrings.save),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 }

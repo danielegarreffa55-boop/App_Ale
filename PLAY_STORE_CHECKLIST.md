@@ -11,7 +11,7 @@
 
 ## Dichiarazioni
 
-- [ ] Data safety: nome, email, telefono, user ID, appuntamenti e diagnostica Crashlytics.
+- [ ] Data safety: nome, email, telefono, user ID, appuntamenti ed eventuale diagnostica realmente raccolta.
 - [ ] Dichiarare cifratura in transito, possibilità di eliminazione e no condivisione pubblicitaria.
 - [ ] URL web per richiesta eliminazione account, oltre al comando in-app, se richiesto dalla policy vigente.
 - [ ] Content rating, target audience, ads declaration = nessuna pubblicità.
@@ -21,7 +21,7 @@
 ## Test e rollout
 
 - [ ] Internal App Sharing/closed testing su dispositivi Android 6+ e Android 13+.
-- [ ] Test Play Integrity/App Check con build distribuita da Play.
-- [ ] Verificare FCM in foreground/background/terminated e token reinstallazione.
+- [ ] Verificare protezioni anti-abuso API, rate limit e build distribuita da Play.
+- [ ] Verificare OneSignal in foreground/background/app terminata, logout e reinstallazione.
 - [ ] Pre-launch report senza crash/ANR critici e accessibilità accettabile.
-- [ ] Rollout graduale con monitoraggio Crashlytics e Cloud Logging.
+- [ ] Rollout graduale con monitoraggio Cloud Logging e OneSignal delivery.

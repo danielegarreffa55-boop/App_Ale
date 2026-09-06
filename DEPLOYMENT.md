@@ -1,89 +1,67 @@
-# Deployment e release
+# Deploy produzione
 
-## Precondizioni
+La destinazione prevista è FastAPI su Google Cloud Run con MongoDB Atlas e segreti in Google Secret Manager. L’account cloud deve essere intestato all’attività.
 
-- Brand, package name/bundle ID, contatti e testi legali approvati.
-- Account Google Cloud con billing attivo e permessi per creare progetto, Firestore, Cloud Run, Auth e service account.
-- `gcloud auth login`, `gcloud auth application-default login`, `firebase login` e `config/production.json` non committato.
-- Test automatici puliti e UAT su progetto staging separato.
+## 1. MongoDB Atlas
 
-## Backend Python e database reale
+Creare un cluster production in UE con backup, point-in-time recovery e almeno due amministratori. Creare un utente database dedicato all’API con accesso al solo database `alessio_garreffa_hair`. Limitare la rete con Private Service Connect oppure egress statico Cloud Run; l’apertura temporanea a `0.0.0.0/0` va compensata con credenziali forti e rimossa appena configurata la rete privata.
+
+Il connection string deve abilitare TLS ed essere salvato nel secret `agh-mongodb-uri`. Non inserirlo in Git, nel JSON Flutter o nella riga di comando condivisa.
+
+## 2. Secret Manager
+
+Creare dall’interfaccia Cloud Console questi secret e aggiungere una versione:
+
+- `agh-mongodb-uri`: URI completo Atlas;
+- `agh-jwt-secret`: almeno 32 byte casuali, unici;
+- `agh-onesignal-api-key`: REST API key OneSignal;
+- `agh-cron-secret`: almeno 32 byte casuali per il bootstrap e il fallback operativo;
+- `agh-smtp-password`: password SMTP, necessario solo se SMTP è configurato.
+
+Lo script verifica che esistano ma non legge né stampa i valori.
+
+## 3. Cloud Run e promemoria
+
+Autenticarsi con l’account aziendale e lanciare:
 
 ```powershell
 .\infrastructure\deploy-gcp.ps1 `
-  -ProjectId 'PROJECT_ID_UNIVOCO' `
+  -ProjectId 'agh-booking-prod' `
   -BillingAccount 'XXXXXX-XXXXXX-XXXXXX' `
-  -GoogleCalendarId 'CALENDAR_ID'
+  -PublicAppUrl 'https://prenota.example.it' `
+  -OneSignalAppId '00000000-0000-0000-0000-000000000000' `
+  -GoogleCalendarId 'calendar-id@group.calendar.google.com' `
+  -SmtpHost 'smtp.example.it' `
+  -SmtpUsername 'prenotazioni@example.it' `
+  -SmtpFrom 'prenotazioni@example.it'
 ```
 
-Lo script crea o riutilizza il progetto, collega il billing, abilita le API, crea Firestore Native in `eur3` con protezione eliminazione, pubblica Rules/Indexes, crea un service account con privilegi minimi e distribuisce FastAPI su Cloud Run in `europe-west1`. Il servizio è raggiungibile via HTTPS, mentre tutte le rotte applicative richiedono un Firebase ID token valido.
+Lo script abilita le API necessarie, crea service account con privilegi limitati, distribuisce il container, collega i secret e crea Cloud Scheduler ogni 15 minuti con autenticazione OIDC. Il backend invia i promemoria soltanto nella finestra configurata in `reminderTime`, con idempotenza MongoDB.
 
-Creare `config/production.json` dal relativo esempio, inserire l'URL restituito in `BACKEND_API_URL` e compilare i valori pubblici Firebase. Quindi:
+Cloud Run resta pubblicamente raggiungibile perché login e app mobile devono chiamarlo, ma tutte le rotte applicative verificano JWT; la rotta dei promemoria verifica l’identità OIDC dello scheduler.
+
+## 4. Bootstrap e proprietario
+
+Eseguire `bootstrap_production.py` una sola volta contro Atlas. Registrare l’account del titolare dall’app, verificarne l’email e promuoverlo da una postazione fidata con `set_owner.py`. Non creare proprietari predefiniti o password nel repository.
+
+## 5. Build client
+
+Inserire l’URL Cloud Run e l’App ID OneSignal in `config/production.json`, ignorato da Git:
 
 ```powershell
 flutter build appbundle --release --dart-define-from-file=config/production.json
+flutter build web --release --dart-define-from-file=config/production.json
 ```
 
-Le callable Functions restano disponibili come fallback locale. I worker FCM/reminder TypeScript possono essere distribuiti separatamente finché non vengono sostituiti da worker Python:
+La build iOS, l’estensione OneSignal, APNs e la firma richiedono macOS con Xcode.
 
-```powershell
-npm --prefix functions ci
-firebase deploy --only functions:appointmentNotifications,functions:sendAppointmentReminders
-```
+## 6. Verifiche prima del rilascio
 
-## Google Calendar
-
-1. Nel progetto Google Cloud abilitare Google Calendar API.
-2. Nell'account Google dello studio creare il calendario dedicato `Appuntamenti Studio`.
-3. Lo script stampa il runtime service account `salon-api@PROJECT_ID.iam.gserviceaccount.com`.
-4. In Google Calendar: Impostazioni calendario → Condividi con persone specifiche → aggiungere quell'email con permesso **Apportare modifiche agli eventi**.
-5. Copiare l'ID calendario da `Integra calendario` nel parametro `GOOGLE_CALENDAR_ID` e ridistribuire Cloud Run se necessario.
-6. Confermare un appuntamento staging, verificare un solo evento, poi spostarlo e annullarlo verificando update/delete dello stesso event ID.
-
-L'account Google dello studio può aggiungere lo stesso calendario all'iPhone; Calendar iOS lo mostrerà senza EventKit e senza credenziali Google nell'app Flutter.
-
-## FCM e APNs
-
-Android usa FCM e richiede l'app registrata con SHA-256 di debug/release quando applicabile. Per iOS:
-
-1. Su Apple Developer creare una APNs Auth Key `.p8`, conservarla fuori dal repository.
-2. Caricare key, Key ID e Team ID in Firebase Console → Cloud Messaging → app iOS.
-3. Su macOS aprire `ios/Runner.xcworkspace`, impostare Team e aggiungere Push Notifications + Background Modes/Remote notifications.
-4. Testare permesso, foreground/background/terminated su dispositivo fisico.
-
-Per Web configurare Web Push certificate/VAPID e generare `firebase-messaging-sw.js` con `npm run configure:web-fcm`. Hosting deve essere HTTPS.
-
-## Android signing e Play Store
-
-Sostituire prima `it.studio.salon.salon_booking` con l'application ID definitivo. Generare un upload keystore in una directory sicura e copiare `android/key.properties.example` in `android/key.properties`; entrambi sono ignorati da Git.
-
-```powershell
-flutter build appbundle --release --dart-define-from-file=config/production.json
-```
-
-Senza `key.properties` la build di verifica resta intenzionalmente unsigned: non viene mai usata la debug key per una release. Conservare keystore e password in password manager/backup cifrato. Abilitare Play App Signing, caricare su Internal testing, completare Data safety e content rating, poi promuovere.
-
-## iOS, TestFlight e App Store
-
-Operazioni da macOS con Xcode stable:
-
-1. Cambiare `PRODUCT_BUNDLE_IDENTIFIER` con il bundle ID definitivo e registrarlo su Apple Developer.
-2. Impostare Team/Signing, Push Notifications e profili distribution.
-3. Inserire `GoogleService-Info.plist` generato da FlutterFire (ignorato da Git).
-4. Eseguire `flutter pub get`, `flutter analyze`, `flutter test` e:
-
-```bash
-flutter build ipa --release --dart-define-from-file=config/production.json
-```
-
-5. Caricare con Xcode/Transporter, distribuire a tester interni TestFlight, compilare App Privacy e inviare a review.
-
-La build/firma iOS non è supportata su Windows e non è stata simulata.
-
-## Rollback e monitoraggio
-
-- Mantenere staging e production separati; mai testare seed sull'ambiente reale.
-- Controllare Cloud Logging per `SLOT_UNAVAILABLE`, errori Calendar/FCM/reminder senza loggare contenuti sensibili.
-- Verificare Crashlytics dSYM/mapping upload dopo il collegamento nativo del progetto.
-- Prima di modificare Rules/Indexes eseguire Emulator test e deploy staging.
-- Per rollback Functions usare la revisione precedente in Cloud Run/Functions; per app distribuire un nuovo build number, non riutilizzare binari firmati.
+- registrazione, verifica email, login, refresh ruotato, reset e revoca sessioni;
+- ruoli client/manager/owner e divieto di auto-declassamento owner;
+- due richieste sulla stessa fascia, warning admin e una sola conferma;
+- blocco con motivo visibile ma non impeditivo;
+- push OneSignal in tutti gli stati dell’app;
+- evento Calendar creato, spostato e cancellato;
+- backup Atlas e ripristino provato;
+- log senza token, password o dati superflui.

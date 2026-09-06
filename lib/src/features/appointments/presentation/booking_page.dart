@@ -1,16 +1,16 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/date_time_x.dart';
+import '../../../core/network/backend_api.dart';
 import '../../../providers.dart';
 import '../../../shared/async_value_view.dart';
 import '../domain/appointment_models.dart';
 
 String bookingRequestErrorMessage(Object error) {
-  if (error is! FirebaseFunctionsException) {
+  if (error is! ApiException) {
     return 'Non siamo riusciti a inviare la richiesta. Riprova tra poco.';
   }
   return switch (error.message) {
@@ -116,8 +116,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     } catch (error) {
       if (mounted) {
         final emailNotVerified =
-            error is FirebaseFunctionsException &&
-            error.message == 'EMAIL_NOT_VERIFIED';
+            error is ApiException && error.message == 'EMAIL_NOT_VERIFIED';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(bookingRequestErrorMessage(error)),
@@ -295,7 +294,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                         }
                         if (snapshot.hasError) {
                           debugPrint(
-                            'Caricamento disponibilitÃ  non riuscito: '
+                            'Caricamento disponibilità non riuscito: '
                             '${snapshot.error}',
                           );
                           return SizedBox(

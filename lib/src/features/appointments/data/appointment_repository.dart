@@ -1,146 +1,90 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
+import '../../../core/config/app_config.dart';
 import '../../../core/network/backend_api.dart';
 import '../domain/appointment_models.dart';
 
 class AppointmentRepository {
-  AppointmentRepository({
-    FirebaseFirestore? firestore,
-    FirebaseFunctions? functions,
-    FirebaseAuth? auth,
-    BackendApi? backendApi,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance,
-       _functions =
-           functions ?? FirebaseFunctions.instanceFor(region: 'europe-west1'),
-       _auth = auth ?? FirebaseAuth.instance,
-       _backendApi = backendApi ?? BackendApi(auth: auth);
+  AppointmentRepository({BackendApi? backendApi})
+    : _api = backendApi ?? BackendApi.instance;
 
-  final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
-  final FirebaseAuth _auth;
-  final BackendApi _backendApi;
+  final BackendApi _api;
 
-  Stream<List<SalonService>> watchServices({bool admin = false}) {
-    Query<Map<String, dynamic>> query = _firestore.collection('services');
-    if (!admin) query = query.where('active', isEqualTo: true);
-    return query
-        .orderBy('displayOrder')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map(SalonService.fromDocument).toList(),
-        );
+  Duration get _pollInterval =>
+      Duration(seconds: AppConfig.apiPollSeconds.clamp(2, 60));
+
+  Stream<T> _poll<T>(Future<T> Function() loader) async* {
+    while (true) {
+      yield await loader();
+      await Future<void>.delayed(_pollInterval);
+    }
   }
 
-  Stream<List<Appointment>> watchClientAppointments(String uid) {
-    return _firestore
-        .collection('appointments')
-        .where('clientId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .limit(100)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map(Appointment.fromDocument).toList(),
-        );
-  }
+  List<Map<String, dynamic>> _items(Map<String, dynamic> response) =>
+      List<Object?>.from(response['items'] as List? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item! as Map))
+          .toList();
 
-  Stream<List<Appointment>> watchAdminAppointments() {
-    return _firestore
-        .collection('appointments')
-        .orderBy('createdAt', descending: true)
-        .limit(250)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map(Appointment.fromDocument).toList(),
-        );
-  }
+  Stream<List<SalonService>> watchServices({bool admin = false}) => _poll(
+    () async => _items(
+      await _api.get('/v1/services', query: {'includeInactive': '$admin'}),
+    ).map(SalonService.fromJson).toList(),
+  );
+
+  Stream<List<Appointment>> watchClientAppointments(String userId) => _poll(
+    () async =>
+        _items(await _api.get('/v1/appointments'))
+            .map(Appointment.fromJson)
+            .toList(),
+  );
+
+  Stream<List<Appointment>> watchAdminAppointments() => _poll(
+    () async =>
+        _items(await _api.get('/v1/admin/appointments'))
+            .map(Appointment.fromJson)
+            .toList(),
+  );
 
   Stream<List<Appointment>> watchAdminAgenda({
     required DateTime startAt,
     required DateTime endAt,
-  }) {
-    return _firestore
-        .collection('appointments')
-        .where(
-          'confirmedStartAt',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(startAt.toUtc()),
-        )
-        .where(
-          'confirmedStartAt',
-          isLessThan: Timestamp.fromDate(endAt.toUtc()),
-        )
-        .orderBy('confirmedStartAt')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map(Appointment.fromDocument).toList(),
-        );
-  }
+  }) => _poll(
+    () async => _items(
+      await _api.get(
+        '/v1/admin/appointments',
+        query: {
+          'startAt': startAt.toUtc().toIso8601String(),
+          'endAt': endAt.toUtc().toIso8601String(),
+        },
+      ),
+    ).map(Appointment.fromJson).toList(),
+  );
 
-  Stream<List<AgendaBlock>> watchAdminBlocks() {
-    return _firestore
-        .collection('blocks')
-        .where('active', isEqualTo: true)
-        .limit(250)
-        .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(AgendaBlock.fromDocument).toList()
-                ..sort((a, b) => a.startAt.compareTo(b.startAt)),
-        );
-  }
+  Stream<List<AgendaBlock>> watchAdminBlocks() => _poll(
+    () async =>
+        _items(await _api.get('/v1/admin/blocks'))
+            .map(AgendaBlock.fromJson)
+            .toList(),
+  );
 
-  Stream<Map<String, dynamic>> watchStudioConfig() {
-    return _firestore
-        .collection('studio')
-        .doc('config')
-        .snapshots()
-        .map((snapshot) => snapshot.data() ?? const <String, dynamic>{});
-  }
+  Stream<Map<String, dynamic>> watchStudioConfig() => _poll(() async {
+    final response = await _api.get('/v1/studio-config');
+    return Map<String, dynamic>.from(response['config']! as Map);
+  });
 
-  Stream<List<Map<String, dynamic>>> watchClients() {
-    return _firestore
-        .collection('users')
-        .orderBy('lastName')
-        .limit(500)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => <String, dynamic>{'id': doc.id, ...doc.data()})
-              .toList(),
-        );
-  }
+  Stream<List<Map<String, dynamic>>> watchClients() =>
+      _poll(() async => _items(await _api.get('/v1/admin/users')));
 
   Future<List<AvailabilitySlot>> availability({
     required String serviceId,
     required DateTime localDay,
   }) async {
-    if (_backendApi.enabled) {
-      final data = await _backendApi.get(
-        '/v1/availability',
-        query: {
-          'serviceId': serviceId,
-          'date': localDay.toIso8601String().substring(0, 10),
-        },
-      );
-      final slots = List<Object?>.from(data['slots']! as List);
-      return slots
-          .map(
-            (slot) => AvailabilitySlot.fromJson(
-              Map<Object?, Object?>.from(slot! as Map),
-            ),
-          )
-          .toList();
-    }
-    final result = await _functions
-        .httpsCallable('getAvailability')
-        .call<Object?>({
-          'serviceId': serviceId,
-          'date': localDay.toIso8601String().substring(0, 10),
-        });
-    final data = Map<Object?, Object?>.from(result.data! as Map);
-    final slots = List<Object?>.from(data['slots']! as List);
-    return slots
+    final data = await _api.get(
+      '/v1/availability',
+      query: {
+        'serviceId': serviceId,
+        'date': localDay.toIso8601String().substring(0, 10),
+      },
+    );
+    return List<Object?>.from(data['slots']! as List)
         .map(
           (slot) => AvailabilitySlot.fromJson(
             Map<Object?, Object?>.from(slot! as Map),
@@ -153,94 +97,53 @@ class AppointmentRepository {
     required String serviceId,
     required DateTime requestedStartAt,
   }) async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      await user.reload();
-      await _auth.currentUser?.getIdToken(true);
-    }
-    if (_backendApi.enabled) {
-      final data = await _backendApi.post('/v1/appointments', {
-        'serviceId': serviceId,
-        'requestedStartAt': requestedStartAt.toUtc().toIso8601String(),
-      });
-      return data['appointmentId']! as String;
-    }
-    final result = await _functions
-        .httpsCallable('createAppointmentRequest')
-        .call<Object?>({
-          'serviceId': serviceId,
-          'requestedStartAt': requestedStartAt.toUtc().toIso8601String(),
-        });
-    return Map<Object?, Object?>.from(result.data! as Map)['appointmentId']!
-        as String;
+    final data = await _api.post('/v1/appointments', {
+      'serviceId': serviceId,
+      'requestedStartAt': requestedStartAt.toUtc().toIso8601String(),
+    });
+    return data['appointmentId']! as String;
   }
 
-  Future<void> adminAccept(String appointmentId) => _mutate(
-    'adminAcceptAppointment',
-    '/v1/admin/appointments/$appointmentId/accept',
-    {'appointmentId': appointmentId},
-  );
+  Future<void> adminAccept(String appointmentId) =>
+      _api.post('/v1/admin/appointments/$appointmentId/accept');
 
-  Future<void> adminReject(String appointmentId, {String? reason}) => _mutate(
-    'adminRejectAppointment',
+  Future<void> adminReject(String appointmentId, {String? reason}) => _api.post(
     '/v1/admin/appointments/$appointmentId/reject',
-    {'appointmentId': appointmentId, 'reason': reason},
-    apiData: {'reason': reason},
+    {'reason': reason},
   );
 
   Future<void> adminCounterPropose(
     String appointmentId,
     DateTime proposedStartAt,
-  ) => _mutate(
-    'adminCounterPropose',
-    '/v1/admin/appointments/$appointmentId/counter-proposal',
-    {
-      'appointmentId': appointmentId,
-      'proposedStartAt': proposedStartAt.toUtc().toIso8601String(),
-    },
-    apiData: {'proposedStartAt': proposedStartAt.toUtc().toIso8601String()},
-  );
+  ) => _api.post('/v1/admin/appointments/$appointmentId/counter-proposal', {
+    'proposedStartAt': proposedStartAt.toUtc().toIso8601String(),
+  });
 
   Future<void> clientRespondToCounterProposal(
     String appointmentId, {
     required bool accept,
-  }) => _mutate(
-    'clientRespondToCounterProposal',
-    '/v1/appointments/$appointmentId/counter-response',
-    {'appointmentId': appointmentId, 'accept': accept},
-    apiData: {'accept': accept},
-  );
+  }) => _api.post('/v1/appointments/$appointmentId/counter-response', {
+    'accept': accept,
+  });
 
-  Future<void> cancelAppointment(String appointmentId) => _mutate(
-    'cancelAppointment',
-    '/v1/appointments/$appointmentId/cancel',
-    {'appointmentId': appointmentId},
-  );
+  Future<void> cancelAppointment(String appointmentId) =>
+      _api.post('/v1/appointments/$appointmentId/cancel');
 
-  Future<void> adminCompleteAppointment(String appointmentId) => _mutate(
-    'adminCompleteAppointment',
-    '/v1/admin/appointments/$appointmentId/complete',
-    {'appointmentId': appointmentId},
-  );
+  Future<void> adminCompleteAppointment(String appointmentId) =>
+      _api.post('/v1/admin/appointments/$appointmentId/complete');
 
   Future<void> adminRescheduleAppointment(
     String appointmentId,
     DateTime startAt,
-  ) => _mutate(
-    'adminRescheduleAppointment',
-    '/v1/admin/appointments/$appointmentId/reschedule',
-    {
-      'appointmentId': appointmentId,
-      'startAt': startAt.toUtc().toIso8601String(),
-    },
-    apiData: {'startAt': startAt.toUtc().toIso8601String()},
-  );
+  ) => _api.post('/v1/admin/appointments/$appointmentId/reschedule', {
+    'startAt': startAt.toUtc().toIso8601String(),
+  });
 
   Future<void> adminCreateAppointment({
     required String clientId,
     required String serviceId,
     required DateTime startAt,
-  }) => _mutate('adminCreateAppointment', '/v1/admin/appointments', {
+  }) => _api.post('/v1/admin/appointments', {
     'clientId': clientId,
     'serviceId': serviceId,
     'startAt': startAt.toUtc().toIso8601String(),
@@ -250,72 +153,24 @@ class AppointmentRepository {
     required DateTime startAt,
     required DateTime endAt,
     required String reason,
-  }) => _mutate('adminCreateBlock', '/v1/admin/blocks', {
+  }) => _api.post('/v1/admin/blocks', {
     'startAt': startAt.toUtc().toIso8601String(),
     'endAt': endAt.toUtc().toIso8601String(),
     'reason': reason.trim(),
   });
 
   Future<void> ownerSetUserRole({required String uid, required String role}) =>
-      _mutate(
-        'ownerSetUserRole',
-        '/v1/owner/users/$uid/role',
-        {'uid': uid, 'role': role},
-        apiData: {'role': role},
-        apiMethod: 'PUT',
-      );
+      _api.put('/v1/owner/users/$uid/role', {'role': role});
 
   Future<void> saveService(SalonService service) async {
-    if (_backendApi.enabled) {
-      final data = Map<String, Object?>.from(service.toJson());
-      if (service.id.isEmpty) {
-        await _backendApi.post('/v1/admin/services', data);
-      } else {
-        await _backendApi.put('/v1/admin/services/${service.id}', data);
-      }
-      return;
-    }
-    final reference = service.id.isEmpty
-        ? _firestore.collection('services').doc()
-        : _firestore.collection('services').doc(service.id);
-    await reference.set({
-      ...service.toJson(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      if (service.id.isEmpty) 'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
-
-  Future<void> _call(String name, Map<String, Object?> data) async {
-    await _functions.httpsCallable(name).call<void>(data);
-  }
-
-  Future<void> saveStudioConfig(Map<String, Object?> data) async {
-    if (_backendApi.enabled) {
-      await _backendApi.patch('/v1/admin/studio-config', data);
-      return;
-    }
-    await _firestore.collection('studio').doc('config').set({
-      ...data,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
-
-  Future<void> _mutate(
-    String functionName,
-    String apiPath,
-    Map<String, Object?> functionData, {
-    Map<String, Object?>? apiData,
-    String apiMethod = 'POST',
-  }) async {
-    if (!_backendApi.enabled) {
-      await _call(functionName, functionData);
-      return;
-    }
-    final body = apiData ?? functionData;
-    if (apiMethod == 'PUT') {
-      await _backendApi.put(apiPath, body);
+    final data = Map<String, Object?>.from(service.toJson());
+    if (service.id.isEmpty) {
+      await _api.post('/v1/admin/services', data);
     } else {
-      await _backendApi.post(apiPath, body);
+      await _api.put('/v1/admin/services/${service.id}', data);
     }
   }
+
+  Future<void> saveStudioConfig(Map<String, Object?> data) =>
+      _api.patch('/v1/admin/studio-config', data);
 }

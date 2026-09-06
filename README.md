@@ -1,67 +1,36 @@
-# Alessio Garreffa Hair
+# Alessio Garreffa Hair — prenotazioni
 
-Applicazione Flutter per iOS, Android e Web con interfaccia cliente, dashboard amministratore responsive, API Python/FastAPI su Cloud Run e database Firestore. `salon_booking` è soltanto il nome tecnico interno; contatti e identificatori di pubblicazione devono essere configurati prima della release.
+Applicazione Flutter per Android, iOS e Web con area cliente, console amministrativa responsive e API FastAPI. Il client comunica esclusivamente via HTTPS con il backend; utenti, ruoli, servizi, blocchi e prenotazioni sono salvati in MongoDB.
 
-## Funzioni implementate
+## Funzioni principali
 
-- Registrazione email/password, verifica email, recupero password, logout ed eliminazione/anomizzazione account.
-- Catalogo servizi amministrabile, orari settimanali, ferie/chiusure tramite blocchi agenda.
-- Richiesta cliente sempre `PENDING_ADMIN`, anche su fasce già occupate; l'admin vede i conflitti e può accettare, rifiutare o fare una controproposta.
-- Accettazione/rifiuto della controproposta da parte del cliente.
-- Conferma e spostamento protetti da transazioni e lock Firestore a bucket da 5 minuti.
-- Dashboard Web/mobile per proprietario e gestori: metriche, richieste, agenda, clienti, servizi, orari e impostazioni. Solo il proprietario assegna i ruoli dalla sezione Staff e ruoli.
-- FCM multi-dispositivo, pulizia token invalidi e log idempotente delle notifiche.
-- Promemoria schedulato il giorno precedente in `Europe/Rome`.
-- Google Calendar solo backend, con event ID deterministico e aggiornamento/cancellazione idempotenti.
-- Security Rules deny-by-default, Custom Claims per proprietario/gestore e rate limiting lato API.
-- Emulator Suite, seed demo, test Flutter/backend/rules/race, CI GitHub Actions.
+- Registrazione e login proprietari con password Argon2id, access token JWT breve e refresh token ruotato/revocabile.
+- Gerarchia `owner` > `manager` > `client`; solo il proprietario assegna i ruoli.
+- Richieste cliente volutamente permissive: più clienti possono chiedere la stessa fascia.
+- Avvisi all’amministratore per sovrapposizioni e blocchi motivati; un solo appuntamento sovrapposto può essere confermato.
+- Agenda amministrativa giornaliera a slot, servizi e orari configurabili.
+- Push OneSignal su Android/iOS, email di verifica e recupero password via SMTP.
+- Sincronizzazione opzionale con un Google Calendar dedicato all’attività.
 
-## Avvio rapido locale
+## Avvio rapido
+
+Preparare MongoDB e le variabili backend come indicato in [SETUP.md](SETUP.md), quindi:
 
 ```powershell
-Copy-Item config\emulator.example.json config\emulator.json
-npm install
-npm --prefix functions install
-npm run emulators
+backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --port 8088
+flutter run -d android --dart-define-from-file=config/emulator.json
 ```
 
-In un secondo terminale:
-
-```powershell
-$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8080'
-$env:FIREBASE_AUTH_EMULATOR_HOST='127.0.0.1:9099'
-$env:GCLOUD_PROJECT='salon-booking-demo'
-npm run seed
-flutter run -d chrome --dart-define-from-file=config/emulator.json
-```
-
-Account demo creati esclusivamente nell'emulatore:
-
-- `admin@demo.local` / `DemoOnly-ChangeMe-123!` (proprietario)
-- `cliente@demo.local` / `DemoOnly-ChangeMe-123!`
-
-Per ambiente, Firebase, Calendar, notifiche e release seguire [SETUP.md](SETUP.md) e [DEPLOYMENT.md](DEPLOYMENT.md). I requisiti approvati sono in [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md); le decisioni tecniche e il modello dati sono in [ARCHITECTURE.md](ARCHITECTURE.md).
-
-La produzione usa `BACKEND_API_URL` per chiamare l'API HTTPS. Se il valore è vuoto, lo sviluppo locale mantiene il fallback alle callable Functions dell'emulatore.
+L’emulatore Android raggiunge il computer tramite `http://10.0.2.2:8088`. Per un dispositivo fisico usare l’IP LAN del computer oppure, preferibilmente, l’URL HTTPS di staging.
 
 ## Qualità
 
 ```powershell
-dart format --output=none --set-exit-if-changed lib test integration_test
+backend\.venv\Scripts\python.exe -m ruff format --check backend
+backend\.venv\Scripts\python.exe -m ruff check backend
+backend\.venv\Scripts\python.exe -m pytest backend\tests -q
 flutter analyze
 flutter test
-backend\.venv\Scripts\python.exe -m pytest backend\tests -q
-npm --prefix functions run build
-npm --prefix functions test
-npm --prefix functions audit --omit=dev
 ```
 
-Il test race e i test Security Rules completi richiedono Firestore Emulator:
-
-```powershell
-firebase emulators:exec --only firestore --project salon-booking-demo "npm --prefix functions test"
-```
-
-## Limite iOS su Windows
-
-Il progetto iOS è incluso e configurato, ma Xcode, firma, APNs e `flutter build ipa --release` richiedono obbligatoriamente macOS. Non esiste una build iOS locale supportata su Windows.
+Le decisioni tecniche sono in [ARCHITECTURE.md](ARCHITECTURE.md); pubblicazione e segreti sono descritti in [DEPLOYMENT.md](DEPLOYMENT.md).

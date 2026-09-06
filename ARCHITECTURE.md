@@ -2,73 +2,43 @@
 
 ## Componenti
 
-- Flutter/Dart: un solo codebase Android, iOS e Web; Riverpod per dipendenze/stato, go_router per navigazione.
-- Firebase Auth: identità e ruoli tramite Custom Claims assegnati solo da Admin SDK. `owner` identifica il proprietario; `admin` abilita la console operativa sia al proprietario sia ai gestori.
-- Firestore: dati realtime, regole deny-by-default e indici dichiarativi.
-- API Python/FastAPI su Cloud Run: autorità di produzione per appuntamenti, profili, device token, ruoli e transizioni.
-- Service account Cloud Run: accesso minimo a Firestore, Firebase Auth, logging e al calendario Google esplicitamente condiviso.
-- Callable/Trigger Functions TypeScript: fallback per l'emulatore e worker asincroni FCM/reminder durante la migrazione.
+- Flutter contiene soltanto UI, cache di sessione cifrata e client HTTP. Non accede direttamente al database.
+- FastAPI è l’unico confine applicativo e applica autenticazione, autorizzazione, validazione, rate limit e transizioni di stato.
+- MongoDB Atlas è il database di produzione. Le collezioni principali sono `users`, `refresh_tokens`, `auth_tokens`, `services`, `studio`, `appointments`, `appointment_locks`, `blocks`, `rate_limits` e `notification_logs`.
+- OneSignal invia push agli utenti usando come `external_id` l’UUID interno del profilo.
+- SMTP invia verifica email e recupero password.
+- Google Calendar è un’integrazione opzionale in uscita e non è la fonte primaria delle prenotazioni.
 
-## Confini di fiducia
+## Autenticazione e ruoli
 
-Il client può leggere soltanto i propri dati e i servizi attivi. Non può scrivere appuntamenti, claim, `CONFIRMED`, lock, `googleCalendarEventId`, reminder o notification log. Ogni richiesta di modifica passa dall'API HTTPS, che verifica il Firebase ID token, valida lo schema Pydantic, controlla il ruolo e applica il rate limit. Le Security Rules proteggono anche le letture realtime effettuate direttamente dall'app.
+Le password sono hash Argon2id e non vengono mai restituite. Il login produce un access token JWT di 15 minuti e un refresh token JWT di 30 giorni. Ogni refresh token viene conservato soltanto come hash, ruotato a ogni uso e invalidato dopo il logout. Il riuso di un token già ruotato revoca l’intera famiglia di sessione.
 
-La gerarchia account è `owner` > `manager` > `client`. Solo un `owner` può chiamare `ownerSetUserRole`; il backend aggiorna Auth e il profilo Firestore, revoca i refresh token e impedisce al proprietario di togliersi da solo l'accesso. Un altro proprietario può comunque cambiarne il ruolo. Il primo proprietario viene inizializzato con uno script eseguito in ambiente fidato.
+Ogni token include la versione di sessione dell’utente. Cambio password, cambio ruolo e cancellazione account incrementano tale versione, invalidando i token precedenti. Le autorizzazioni effettive vengono sempre lette da MongoDB; non ci si fida del ruolo inviato dal client.
 
-## Flusso prenotazione
+I ruoli sono:
 
-```text
-Cliente -> POST /v1/appointments (anche su fascia occupata) -> PENDING_ADMIN
-                                      |-> adminReject -> REJECTED
-                                      |-> adminCounterPropose -> COUNTER_PROPOSED
-                                      |                         |-> client reject -> COUNTER_REJECTED
-                                      |                         `-> client accept -> transaction + locks -> CONFIRMED
-                                      `-> admin accept -> transaction + locks -> CONFIRMED
+- `client`: profilo e proprie prenotazioni;
+- `manager`: agenda, richieste, clienti, servizi, orari e blocchi;
+- `owner`: tutte le funzioni manager e assegnazione ruoli.
 
-CONFIRMED -> trigger FCM + trigger Calendar
-          -> admin reschedule -> replace locks atomica -> update Calendar + FCM
-          -> cancel -> release locks -> delete Calendar + FCM
-          `-> scheduled reminder idempotente
-```
+Il primo proprietario viene promosso da un ambiente fidato con `backend/scripts/set_owner.py`. Successivamente i ruoli si gestiscono dalla console proprietario.
 
-## Anti doppia prenotazione
+## Prenotazioni e concorrenza
 
-La richiesta del cliente non acquisisce lock e può sovrapporsi a un appuntamento confermato. L'area admin evidenzia il conflitto e richiede di liberare la fascia o proporre un altro orario prima della conferma.
+La disponibilità mostra gli orari configurati senza nascondere fasce già richieste o confermate. Una richiesta cliente crea sempre `PENDING_ADMIN` se la data è valida: è l’amministratore a vedere gli eventuali conflitti e decidere se rifiutare o proporre un altro orario.
 
-Ogni intervallo confermato include durata servizio e buffer. Il backend lo suddivide in documenti deterministici da 5 minuti in `appointmentLocks`. La transazione legge tutti i bucket, fallisce se uno appartiene a un altro appuntamento confermato e scrive lock + stato `CONFIRMED` nello stesso commit. Due transazioni concorrenti toccano almeno un documento identico: Firestore ne serializza una e l'altra vede `SLOT_UNAVAILABLE`.
+La conferma crea lock deterministici ogni 5 minuti nella collezione `appointment_locks`. L’indice univoco su `_id` impedisce due conferme sovrapposte. In produzione le scritture lock + appuntamento vengono eseguite in una transazione MongoDB; per questo `MONGODB_TRANSACTIONS=true` è obbligatorio e il cluster deve supportare transazioni.
 
-I blocchi agenda sono promemoria amministrativi morbidi: non nascondono gli slot al cliente e non impediscono richieste o conferme. Il loro motivo è visibile soltanto all'admin come avviso. Lo spostamento di un appuntamento legge insieme vecchi e nuovi lock, elimina soltanto quelli non più usati e acquisisce i nuovi nello stesso commit.
+I blocchi agenda sono avvisi morbidi con motivo. Non impediscono richieste né conferme; la console evidenzia la sovrapposizione. Gli appuntamenti già confermati sono invece vincoli rigidi: per confermare una richiesta conflittuale occorre liberare la fascia o fare una controproposta.
 
-Il test `lock-race.emulator.test.ts` invia due acquisizioni contemporanee e verifica un solo successo.
+Le date sono memorizzate in UTC e visualizzate nella zona IANA `Europe/Rome`, inclusi i cambi dell’ora legale.
 
-## Collezioni principali
+## Notifiche
 
-- `users/{uid}`: profilo minimizzato; `devices/{hash}` per token FCM multipli.
-- `services/{id}`: nome, descrizione, durata, buffer, prezzo, attivo, ordine.
-- `appointments/{id}`: snapshot servizio/cliente, requested/proposed/confirmed UTC, stato corrente, history, Calendar e reminder.
-- `appointmentLocks/{bucket}`: holder dell'appuntamento confermato e bucket UTC; mai leggibile dal client.
-- `blocks/{id}`: promemoria admin per ferie, chiusure o fasce manuali; non bloccanti per il cliente.
-- `studio/config`: brand operativo, timezone, valuta, reminder e openingHours.
-- `notificationLogs/{id}`: claim/SENT/FAILED/SKIPPED per deduplicazione e diagnosi.
-- `rateLimits/{uid_action}`: finestra contatori callable.
+Il backend invia a OneSignal messaggi idempotenti e registra payload, stato e tentativi in `notification_logs`. Gli invii transitoriamente falliti vengono ritentati dal job schedulato con un limite di tentativi; i log scadono automaticamente dopo 180 giorni. Login/logout OneSignal seguono la sessione applicativa, così più dispositivi possono appartenere allo stesso utente. Le notifiche coperte sono nuova richiesta agli amministratori, conferma, rifiuto, controproposta, spostamento, annullamento e promemoria.
 
-## Date e DST
+Su Android OneSignal usa FCM come trasporto di sistema; su iOS usa APNs. Queste credenziali appartengono agli account aziendali Google/Apple e non sostituiscono né leggono l’autenticazione JWT o MongoDB.
 
-Firestore contiene soltanto `Timestamp` UTC. Luxon/timezone convertono con zona IANA `Europe/Rome`; non vengono memorizzati offset fissi. I test coprono giorni da 23 e 25 ore nei cambi DST 2026.
+## Servizi esterni e segreti
 
-## Idempotenza esterna
-
-- Calendar Event ID = SHA-256 dell'appointment ID; `update`, poi `insert`, con gestione 404/409.
-- Notification log deterministico; un retry non reinvia dopo `SENT`.
-- Reminder marcato soltanto dopo almeno un invio FCM riuscito.
-- Trigger Calendar ignora scritture dei propri campi di sync per evitare loop.
-
-## Estendibilità
-
-La prima release visualizza il solo operatore Alessio, ma la produzione dovrà
-associare `operatorId` a servizi, appuntamenti, blocchi, lock e calendario. Il
-bucket del lock dovrà essere partizionato per operatore, così due operatori
-possono lavorare nello stesso orario senza generare un falso conflitto. Gli
-eventi importati da Google Calendar saranno documenti admin-only o appuntamenti
-con sorgente esterna e senza account cliente. Note e motivi dei blocchi restano
-sempre admin-only.
+Il client riceve soltanto `BACKEND_API_URL` e `ONESIGNAL_APP_ID`, entrambi pubblici. URI MongoDB, chiave JWT, chiave API OneSignal, password SMTP e credenziali Calendar vivono solo nel runtime backend/Secret Manager. I file reali non sono versionati.

@@ -1,7 +1,0 @@
-lib/
-node_modules/
-*.log
-.env
-.env.*
-service-account*.json
-coverage/

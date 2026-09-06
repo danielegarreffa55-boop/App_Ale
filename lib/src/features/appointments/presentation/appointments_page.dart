@@ -1,8 +1,8 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/l10n/app_strings.dart';
+import '../../../core/network/backend_api.dart';
 import '../../../providers.dart';
 import '../../../shared/appointment_card.dart';
 import '../../../shared/async_value_view.dart';
@@ -49,7 +49,7 @@ class AppointmentsPage extends ConsumerWidget {
       }
     } catch (error) {
       final closed =
-          error is FirebaseFunctionsException &&
+          error is ApiException &&
           error.message == 'CANCELLATION_WINDOW_CLOSED';
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

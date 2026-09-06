@@ -1,8 +1,8 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers.dart';
+import '../../../core/network/backend_api.dart';
 import '../../../shared/async_value_view.dart';
 
 class OwnerRolesSection extends ConsumerStatefulWidget {
@@ -38,7 +38,7 @@ class _OwnerRolesSectionState extends ConsumerState<OwnerRolesSection> {
   };
 
   String _errorMessage(Object error) {
-    if (error is FirebaseFunctionsException) {
+    if (error is ApiException) {
       return switch (error.message) {
         'CANNOT_CHANGE_OWN_OWNER_ROLE' =>
           'Non puoi revocare il tuo ruolo di proprietario.',

@@ -5,8 +5,8 @@ import 'package:salon_booking/src/app.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('avvio sicuro senza credenziali Firebase', (tester) async {
-    await tester.pumpWidget(const SalonApp(firebaseReady: false));
+  testWidgets('avvio sicuro senza backend configurato', (tester) async {
+    await tester.pumpWidget(const SalonApp(backendReady: false));
     await tester.pumpAndSettle();
     expect(find.textContaining('Il codice è pronto'), findsOneWidget);
   });

@@ -54,12 +54,7 @@ app.*.map.json
 .env
 .env.*
 !.env.example
-.firebaserc
-firebase-debug.log
-firestore-debug.log
 ui-debug.log
-**/google-services.json
-**/GoogleService-Info.plist
 **/service-account*.json
 **/*serviceAccount*.json
 **/*.jks
@@ -69,13 +64,7 @@ ui-debug.log
 **/*.p12
 **/*.mobileprovision
 
-# Firebase emulators and local tooling
-.firebase/
-emulator-data/
-
-# Generated Firebase options contain public project identifiers and are
-# generated per environment during deployment.
+# Generated configuration and local secret material.
 config/*.json
 !config/*.example.json
-lib/firebase_options.dart
-web/firebase-messaging-sw.js
+secrets/

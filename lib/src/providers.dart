@@ -1,13 +1,12 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/firebase/notification_service.dart';
+import 'core/notifications/notification_service.dart';
 import 'features/appointments/data/appointment_repository.dart';
 import 'features/appointments/domain/appointment_models.dart';
 import 'features/auth/data/auth_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AuthRepository(),
+  (ref) => AuthRepository.instance,
 );
 final appointmentRepositoryProvider = Provider<AppointmentRepository>(
   (ref) => AppointmentRepository(),
@@ -16,7 +15,7 @@ final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(),
 );
 
-final authStateProvider = StreamProvider<User?>((ref) {
+final authStateProvider = StreamProvider<AuthUser?>((ref) {
   return ref.watch(authRepositoryProvider).authStateChanges();
 });
 

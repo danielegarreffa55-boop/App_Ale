@@ -1,9 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_strings.dart';
+import '../../../core/network/backend_api.dart';
 import '../../../providers.dart';
 import '../../../shared/brand_logo.dart';
 
@@ -80,7 +80,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         await auth.signIn(email: _email.text, password: _password.text);
       }
       await _finishAuthentication();
-    } on FirebaseAuthException catch (error) {
+    } on ApiException catch (error) {
       if (mounted) setState(() => _error = _friendlyAuthError(error));
     } catch (_) {
       if (mounted) {
@@ -133,7 +133,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           const SnackBar(content: Text('Email di reimpostazione inviata.')),
         );
       }
-    } on FirebaseAuthException catch (error) {
+    } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(_friendlyAuthError(error))));
@@ -358,13 +358,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   }
 }
 
-String _friendlyAuthError(FirebaseAuthException error) => switch (error.code) {
-  'invalid-credential' ||
-  'wrong-password' ||
-  'user-not-found' => 'Email o password non corretti.',
-  'email-already-in-use' => 'Esiste già un account con questa email.',
-  'weak-password' => 'La password scelta è troppo debole.',
-  'too-many-requests' => 'Troppi tentativi. Attendi qualche minuto.',
-  'network-request-failed' => 'Connessione non disponibile.',
-  _ => error.message ?? 'Autenticazione non riuscita.',
+String _friendlyAuthError(ApiException error) => switch (error.message) {
+  'INVALID_CREDENTIALS' => 'Email o password non corretti.',
+  'EMAIL_ALREADY_IN_USE' => 'Esiste già un account con questa email.',
+  'RATE_LIMITED' => 'Troppi tentativi. Attendi qualche minuto.',
+  'BACKEND_UNREACHABLE' => 'Connessione non disponibile.',
+  _ => 'Autenticazione non riuscita.',
 };

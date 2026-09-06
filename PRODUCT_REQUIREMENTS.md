@@ -85,12 +85,13 @@ nel repository.
 
 ## Infrastruttura, privacy e qualità
 
-- Progetto Firebase production nuovo, posseduto dall'attività e ospitato in
-  Europa dove supportato.
+- MongoDB Atlas, OneSignal e progetto cloud production nuovi, posseduti
+  dall'attività e ospitati in Europa dove supportato.
 - Proprietario iniziale: Alessio; eventuali altri proprietari o gestori sono
   assegnati dal proprietario dalla console.
 - Dominio, email ufficiale, dati legali e testi privacy ancora da definire.
-- Analytics solo aggregati e necessari; Crashlytics abilitato.
+- Analytics e diagnostica solo aggregati e necessari, da attivare dopo aver
+  definito retention e informativa.
 - Le notifiche sulla lock screen mostrano soltanto studio, giorno e ora.
 - Pubblicazione store sospesa fino a nuova decisione.
 

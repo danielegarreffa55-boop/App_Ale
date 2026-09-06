@@ -1,126 +1,65 @@
-# Setup sviluppo
+# Configurazione
 
-## Toolchain verificata
+## Account da creare
 
-Ambiente preparato su Windows 11 Pro x64:
+Tutti gli account e i metodi di recupero devono essere intestati all’attività, non allo sviluppatore e non a un profilo Google personale:
 
-- Flutter stable 3.47.2, Dart 3.13.2.
-- Android Studio 2026.1.3.7 con JBR 25.0.2.
-- Android SDK/API 36, build-tools 36.0.0, platform-tools 37.0.1, NDK 28.2.13676358.
-- Node.js 22.14.0, npm 10.9.2.
-- Firebase CLI 15.28.2, FlutterFire CLI 1.4.1, Git 2.52.0.
-- Python 3 con ambiente virtuale in `backend/.venv`; Google Cloud CLI per il deploy Cloud Run.
+1. organizzazione MongoDB Atlas con cluster nella regione UE;
+2. workspace OneSignal;
+3. casella mittente o provider SMTP del dominio;
+4. progetto Google Cloud dedicato per Cloud Run e trasporto push Android;
+5. Apple Developer dell’attività per APNs e pubblicazione iOS;
+6. calendario Google dedicato allo studio, se si desidera la sincronizzazione.
 
-Flutter è in `C:\Users\Daniele\develop\flutter`; SDK Android in `%LOCALAPPDATA%\Android\Sdk`. `PATH`, `JAVA_HOME`, `ANDROID_HOME` e `ANDROID_SDK_ROOT` sono impostati per l'utente. Riavviare terminali/IDE già aperti per rileggere le variabili.
+Conservare proprietari di riserva e codici di recupero in un password manager aziendale.
 
-Visual Studio C++ non è installato perché il repository non targetta Windows desktop. Xcode non è disponibile su Windows: usare un Mac per iOS.
+## Backend locale o staging
 
-## Configurazione centralizzata
+1. Installare Python 3.11+ e creare `backend/.venv`.
+2. Installare `backend/requirements-dev.txt`.
+3. Copiare i nomi da `.env.example` nel gestore variabili dell’ambiente. Il codice non carica automaticamente file `.env`.
+4. Impostare `MONGODB_URI` su un database di sviluppo separato. Per Mongo locale lasciare `MONGODB_TRANSACTIONS=false`; Atlas di produzione usa `true`.
+5. Eseguire lo script di bootstrap una sola volta.
+6. Avviare Uvicorn e verificare `/healthz`, `/readyz` e `/docs`.
 
-I valori client sono letti con `--dart-define-from-file`. Copiare senza committare:
+In sviluppo `EXPOSE_DEV_TOKENS=true` restituisce i token di verifica/reset nelle risposte API. La modalità produzione rifiuta esplicitamente questa opzione.
 
-```powershell
-Copy-Item config\dev.example.json config\dev.json
+## Flutter
+
+Creare un file ignorato da Git partendo da `config/emulator.example.json` o `config/production.example.json`:
+
+```json
+{
+  "BACKEND_API_URL": "https://api.example.it",
+  "ONESIGNAL_APP_ID": "00000000-0000-0000-0000-000000000000"
+}
 ```
 
-Compilare `STUDIO_NAME`, `APP_NAME`, contatti, Firebase public config e chiave VAPID. I file JSON client Firebase non contengono segreti, ma sono tenuti per ambiente fuori da Git. I segreti reali, service account, chiavi APNs e keystore non devono mai entrare nel repository.
-
-## Produzione Cloud Run + Firestore
-
-Passaggi manuali inevitabili:
-
-1. Eseguire `firebase login` e completare OAuth nel browser.
-2. Eseguire `gcloud auth login` e `gcloud auth application-default login`.
-3. Identificare il billing account con `gcloud billing accounts list`.
-4. Creare progetto, database Firestore UE, service account e API Cloud Run con:
+Avviare Android Emulator con:
 
 ```powershell
-.\infrastructure\deploy-gcp.ps1 `
-  -ProjectId 'PROJECT_ID_UNIVOCO' `
-  -BillingAccount 'XXXXXX-XXXXXX-XXXXXX' `
-  -GoogleCalendarId 'CALENDAR_ID'
+flutter run -d android --dart-define-from-file=config/emulator.json
 ```
 
-5. In Authentication abilitare Email/Password e configurare domini/link email.
-6. Registrare app Android, iOS e Web con identificatori definitivi.
-7. Copiare `config/production.example.json` in `config/production.json` e compilare le opzioni pubbliche Firebase e l'URL Cloud Run stampato dallo script.
-8. Eseguire:
+Access e refresh token sono memorizzati con `flutter_secure_storage`; nessun segreto backend deve entrare nel file JSON Flutter.
 
-```powershell
-flutterfire configure --project YOUR_PROJECT_ID --platforms android,ios,web
-```
+## Email di verifica e reset
 
-I file nativi generati sono ignorati da Git. L'app usa anche le opzioni esplicite in `config/production.json` per supportare più ambienti.
+Configurare `SMTP_HOST`, porta, utente, password e mittente verificato. `PUBLIC_APP_URL` deve puntare al dominio HTTPS che ospita il client Flutter Web. Le email generano collegamenti hash `/#/verify-email` e `/#/reset-password`, quindi funzionano anche su hosting statico senza regole di rewrite. Le due pagine sono già presenti nel router Flutter.
 
-9. Copiare `.firebaserc.example` in `.firebaserc` e sostituire il project ID.
-10. Configurare App Check: Play Integrity per Android, App Attest con fallback DeviceCheck per iOS e reCAPTCHA v3 per Web. In debug registrare soltanto token debug autorizzati.
+## OneSignal
 
-### API Python locale
+1. Creare una app OneSignal dell’attività.
+2. Inserire l’App ID pubblico nel JSON Flutter e nel runtime backend.
+3. Inserire la REST API key esclusivamente nel Secret Manager del backend.
+4. In OneSignal configurare Android con le credenziali FCM del progetto aziendale.
+5. Configurare iOS con la chiave APNs dell’account Apple aziendale e completare in Xcode Push Notifications, Background Modes e Notification Service Extension.
+6. Provare su dispositivi reali: foreground, background, app terminata, logout, reinstallazione e secondo dispositivo.
 
-```powershell
-python -m venv backend\.venv
-backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
-$env:GOOGLE_CLOUD_PROJECT='salon-booking-demo'
-$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8080'
-$env:FIREBASE_AUTH_EMULATOR_HOST='127.0.0.1:9099'
-npm run api:run
-```
+OneSignal elimina il codice Firebase dall’app e centralizza targeting/log, ma Android continua necessariamente a usare il trasporto push di Google. Questo non richiede collegare un account personale: progetto e credenziali devono appartenere all’attività.
 
-Per Android Emulator impostare anche `BACKEND_API_URL` a `http://10.0.2.2:8088`. Se rimane vuoto viene usato il fallback Functions.
+## Google Calendar senza account personale
 
-## Configurazione Firebase client
+Creare un calendario dedicato, per esempio `Prenotazioni AGH`, posseduto dall’account aziendale. Dopo il deploy condividere soltanto quel calendario con il service account Cloud Run stampato dallo script, autorizzandolo a modificare gli eventi. Impostare l’ID in `GOOGLE_CALENDAR_ID`.
 
-Passaggi successivi al deploy:
-
-1. Per FCM Web creare una Web Push certificate, inserire la chiave pubblica in `FCM_WEB_VAPID_KEY`, quindi:
-
-```powershell
-npm run configure:web-fcm
-```
-
-
-## Emulatori
-
-`npm run emulators` avvia Auth, Firestore, Functions, Hosting e UI su `http://localhost:4000`. Copiare `config/emulator.example.json` in `config/emulator.json`.
-
-Firebase CLI richiede Java 21 o successivo. Su questa workstation una vecchia installazione Oracle può precedere il JBR nel `PATH`; prima di avviare gli emulatori verificare `java --version` e, se mostra Java 8, usare nella sessione corrente:
-
-```powershell
-$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
-$env:Path="$env:JAVA_HOME\bin;$env:Path"
-```
-
-Per seed in PowerShell:
-
-```powershell
-$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8080'
-$env:FIREBASE_AUTH_EMULATOR_HOST='127.0.0.1:9099'
-$env:GCLOUD_PROJECT='salon-booking-demo'
-npm run seed
-```
-
-Per Android Emulator sovrascrivere l'host:
-
-```powershell
-flutter run --dart-define-from-file=config/emulator.json --dart-define=FIREBASE_EMULATOR_HOST=10.0.2.2
-```
-
-Il test d'integrazione Flutter richiede un dispositivo Android/iOS reale o emulato (il runner non supporta Chrome):
-
-```powershell
-flutter test integration_test\app_test.dart -d DEVICE_ID
-```
-
-## Primo proprietario e gestori
-
-Creare prima l'utente tramite app/Auth. Poi autenticare Application Default Credentials (`gcloud auth application-default login`) oppure impostare `GOOGLE_APPLICATION_CREDENTIALS` verso un file esterno al repository e lanciare:
-
-```powershell
-$env:GOOGLE_CLOUD_PROJECT='PROJECT_ID'
-backend\.venv\Scripts\python.exe backend\scripts\bootstrap_production.py
-backend\.venv\Scripts\python.exe backend\scripts\set_owner.py proprietario@example.it
-```
-
-Lo script crea il primo `owner`, che ha accesso completo e può assegnare i ruoli dalla sezione **Staff e ruoli** della console. I ruoli disponibili sono proprietario, gestore prenotazioni e cliente. Il gestore usa tutta la console operativa ma non può cambiare i permessi.
-
-Il comando `set-admin` resta disponibile soltanto come procedura tecnica di emergenza e assegna il ruolo di gestore. Dopo ogni cambio di ruolo l'account interessato deve uscire e rientrare per ricevere un nuovo ID token. Nessuna schermata cliente e nessuna scrittura diretta su Firestore possono modificare i ruoli.
+Il database resta MongoDB: Calendar è una copia operativa degli appuntamenti confermati, non contiene utenti, password o ruoli.

@@ -28,15 +28,15 @@ class SetupRequiredPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Il codice è pronto. Per collegare questo ambiente a Firebase, '
-                        'copia config/dev.example.json, inserisci i parametri pubblici '
-                        'del progetto e avvia Flutter con --dart-define-from-file.',
+                        'Il codice è pronto. Configura l’indirizzo HTTPS della API '
+                        'FastAPI e l’App ID OneSignal in un file JSON locale, poi '
+                        'avvia Flutter con --dart-define-from-file.',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 20),
                       const SelectableText(
-                        'flutter run -d chrome '
-                        '--dart-define-from-file=config/dev.json',
+                        'flutter run -d android '
+                        '--dart-define-from-file=config/emulator.json',
                         textAlign: TextAlign.center,
                       ),
                     ],

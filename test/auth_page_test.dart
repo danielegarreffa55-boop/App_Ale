@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:salon_booking/src/features/auth/presentation/auth_page.dart';
 
 void main() {
-  testWidgets('login valida i campi obbligatori senza chiamare Firebase', (
+  testWidgets('login valida i campi obbligatori senza chiamare il backend', (
     tester,
   ) async {
     await tester.pumpWidget(
