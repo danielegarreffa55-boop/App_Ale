@@ -86,6 +86,7 @@ def settings() -> Settings:
         smtp_use_tls=_boolean("SMTP_USE_TLS", default=True),
         expose_dev_tokens=_boolean("EXPOSE_DEV_TOKENS", default=False),
     )
+    
     if environment == "production":
         if jwt_secret == _DEVELOPMENT_JWT_SECRET or len(jwt_secret.encode()) < 32:
             raise RuntimeError(
