@@ -31,25 +31,30 @@ final isOwnerProvider = FutureProvider<bool>((ref) async {
   return ref.watch(authRepositoryProvider).isOwner();
 });
 
-final servicesProvider = StreamProvider<List<SalonService>>((ref) {
+final servicesProvider = StreamProvider.autoDispose<List<SalonService>>((ref) {
   return ref.watch(appointmentRepositoryProvider).watchServices();
 });
 
-final adminServicesProvider = StreamProvider<List<SalonService>>((ref) {
+final adminServicesProvider = StreamProvider.autoDispose<List<SalonService>>((
+  ref,
+) {
   return ref.watch(appointmentRepositoryProvider).watchServices(admin: true);
 });
 
-final clientAppointmentsProvider = StreamProvider<List<Appointment>>((ref) {
-  final user = ref.watch(authStateProvider).value;
-  if (user == null) return const Stream.empty();
-  return ref
-      .watch(appointmentRepositoryProvider)
-      .watchClientAppointments(user.uid);
-});
+final clientAppointmentsProvider =
+    StreamProvider.autoDispose<List<Appointment>>((ref) {
+      final user = ref.watch(authStateProvider).value;
+      if (user == null) return const Stream.empty();
+      return ref
+          .watch(appointmentRepositoryProvider)
+          .watchClientAppointments(user.uid);
+    });
 
-final adminAppointmentsProvider = StreamProvider<List<Appointment>>((ref) {
-  return ref.watch(appointmentRepositoryProvider).watchAdminAppointments();
-});
+final adminAppointmentsProvider = StreamProvider.autoDispose<List<Appointment>>(
+  (ref) {
+    return ref.watch(appointmentRepositoryProvider).watchAdminAppointments();
+  },
+);
 
 typedef AdminAgendaRange = ({DateTime startAt, DateTime endAt});
 
@@ -60,14 +65,20 @@ final adminAgendaProvider = StreamProvider.autoDispose
           .watchAdminAgenda(startAt: range.startAt, endAt: range.endAt);
     });
 
-final adminBlocksProvider = StreamProvider<List<AgendaBlock>>((ref) {
+final adminBlocksProvider = StreamProvider.autoDispose<List<AgendaBlock>>((
+  ref,
+) {
   return ref.watch(appointmentRepositoryProvider).watchAdminBlocks();
 });
 
-final studioConfigProvider = StreamProvider<Map<String, dynamic>>((ref) {
+final studioConfigProvider = StreamProvider.autoDispose<Map<String, dynamic>>((
+  ref,
+) {
   return ref.watch(appointmentRepositoryProvider).watchStudioConfig();
 });
 
-final clientsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+final clientsProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((
+  ref,
+) {
   return ref.watch(appointmentRepositoryProvider).watchClients();
 });

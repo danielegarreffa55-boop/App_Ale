@@ -12,9 +12,17 @@ class AppointmentRepository {
       Duration(seconds: AppConfig.apiPollSeconds.clamp(2, 60));
 
   Stream<T> _poll<T>(Future<T> Function() loader) async* {
+    var consecutiveFailures = 0;
     while (true) {
-      yield await loader();
-      await Future<void>.delayed(_pollInterval);
+      try {
+        yield await loader();
+        consecutiveFailures = 0;
+      } catch (error, stackTrace) {
+        consecutiveFailures++;
+        yield* Stream<T>.error(error, stackTrace);
+      }
+      final retryMultiplier = 1 << (consecutiveFailures.clamp(0, 3));
+      await Future<void>.delayed(_pollInterval * retryMultiplier);
     }
   }
 

@@ -15,6 +15,25 @@ class ProfilePage extends ConsumerStatefulWidget {
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   var _notificationBusy = false;
 
+  Future<void> _resendVerification() async {
+    try {
+      await ref.read(authRepositoryProvider).resendEmailVerification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Email di verifica inviata.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invio non riuscito. Riprova tra poco.'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _enableNotifications() async {
     setState(() => _notificationBusy = true);
     try {
@@ -132,9 +151,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           leading: const Icon(Icons.mark_email_unread_outlined),
                           title: const Text('Email non verificata'),
                           trailing: TextButton(
-                            onPressed: () => ref
-                                .read(authRepositoryProvider)
-                                .resendEmailVerification(),
+                            onPressed: _resendVerification,
                             child: const Text('Reinvia'),
                           ),
                         ),

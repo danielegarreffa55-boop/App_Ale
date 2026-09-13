@@ -1687,130 +1687,27 @@ class _ServicesSection extends ConsumerWidget {
     WidgetRef ref, [
     SalonService? existing,
   ]) async {
-    final name = TextEditingController(text: existing?.name);
-    final category = TextEditingController(
-      text: existing?.category ?? 'Altri servizi',
-    );
-    final description = TextEditingController(text: existing?.description);
-    final duration = TextEditingController(
-      text: '${existing?.durationMinutes ?? 30}',
-    );
-    final price = TextEditingController(
-      text: existing?.priceCents == null
-          ? ''
-          : (existing!.priceCents! / 100).toStringAsFixed(2),
-    );
-    var active = existing?.active ?? true;
-    var priceFrom = existing?.priceFrom ?? false;
     final result = await showDialog<SalonService>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            existing == null ? 'Nuovo servizio' : 'Modifica servizio',
-          ),
-          content: SizedBox(
-            width: 460,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: name,
-                    decoration: const InputDecoration(labelText: 'Nome'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: category,
-                    decoration: const InputDecoration(
-                      labelText: 'Categoria',
-                      hintText: 'Taglio, Colore, Trattamenti…',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: description,
-                    maxLines: 2,
-                    decoration: const InputDecoration(labelText: 'Descrizione'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: duration,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Durata (min)',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: price,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(labelText: 'Prezzo EUR'),
-                  ),
-                  SwitchListTile(
-                    value: priceFrom,
-                    onChanged: (value) =>
-                        setDialogState(() => priceFrom = value),
-                    title: const Text('Mostra “a partire da”'),
-                  ),
-                  SwitchListTile(
-                    value: active,
-                    onChanged: (value) => setDialogState(() => active = value),
-                    title: const Text('Prenotabile'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text(AppStrings.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                final durationValue = int.tryParse(duration.text);
-                if (name.text.trim().isEmpty || durationValue == null) return;
-                final priceValue = double.tryParse(
-                  price.text.replaceAll(',', '.'),
-                );
-                Navigator.pop(
-                  dialogContext,
-                  SalonService(
-                    id: existing?.id ?? '',
-                    name: name.text,
-                    category: category.text.trim().isEmpty
-                        ? 'Altri servizi'
-                        : category.text,
-                    description: description.text,
-                    durationMinutes: durationValue,
-                    bufferMinutes: 0,
-                    priceCents: priceValue == null
-                        ? null
-                        : (priceValue * 100).round(),
-                    priceFrom: priceFrom,
-                    operatorIds: existing?.operatorIds ?? const ['alessio'],
-                    active: active,
-                    displayOrder: existing?.displayOrder ?? 100,
-                  ),
-                );
-              },
-              child: const Text(AppStrings.save),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => _ServiceEditorDialog(existing: existing),
     );
-    name.dispose();
-    category.dispose();
-    description.dispose();
-    duration.dispose();
-    price.dispose();
     if (result == null) return;
-    await ref.read(appointmentRepositoryProvider).saveService(result);
-    ref.invalidate(adminServicesProvider);
+    try {
+      await ref.read(appointmentRepositoryProvider).saveService(result);
+      ref.invalidate(adminServicesProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Servizio salvato.')));
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Salvataggio non riuscito. Riprova tra poco.'),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -1881,6 +1778,175 @@ class _ServicesSection extends ConsumerWidget {
   }
 }
 
+class _ServiceEditorDialog extends StatefulWidget {
+  const _ServiceEditorDialog({this.existing});
+
+  final SalonService? existing;
+
+  @override
+  State<_ServiceEditorDialog> createState() => _ServiceEditorDialogState();
+}
+
+class _ServiceEditorDialogState extends State<_ServiceEditorDialog> {
+  late final TextEditingController _name;
+  late final TextEditingController _category;
+  late final TextEditingController _description;
+  late final TextEditingController _duration;
+  late final TextEditingController _price;
+  late bool _active;
+  late bool _priceFrom;
+  String? _validationError;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    _name = TextEditingController(text: existing?.name);
+    _category = TextEditingController(
+      text: existing?.category ?? 'Altri servizi',
+    );
+    _description = TextEditingController(text: existing?.description);
+    _duration = TextEditingController(
+      text: '${existing?.durationMinutes ?? 30}',
+    );
+    _price = TextEditingController(
+      text: existing?.priceCents == null
+          ? ''
+          : (existing!.priceCents! / 100).toStringAsFixed(2),
+    );
+    _active = existing?.active ?? true;
+    _priceFrom = existing?.priceFrom ?? false;
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _category.dispose();
+    _description.dispose();
+    _duration.dispose();
+    _price.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final duration = int.tryParse(_duration.text.trim());
+    if (_name.text.trim().isEmpty ||
+        duration == null ||
+        duration < 5 ||
+        duration > 720) {
+      setState(
+        () => _validationError =
+            'Inserisci un nome e una durata tra 5 e 720 minuti.',
+      );
+      return;
+    }
+    final price = double.tryParse(_price.text.replaceAll(',', '.'));
+    if (_price.text.trim().isNotEmpty &&
+        (price == null || !price.isFinite || price < 0 || price > 100000)) {
+      setState(
+        () => _validationError = 'Inserisci un prezzo tra 0 e 100.000 EUR.',
+      );
+      return;
+    }
+    final existing = widget.existing;
+    Navigator.pop(
+      context,
+      SalonService(
+        id: existing?.id ?? '',
+        name: _name.text.trim(),
+        category: _category.text.trim().isEmpty
+            ? 'Altri servizi'
+            : _category.text.trim(),
+        description: _description.text.trim(),
+        durationMinutes: duration,
+        bufferMinutes: 0,
+        priceCents: price == null ? null : (price * 100).round(),
+        priceFrom: _priceFrom,
+        operatorIds: existing?.operatorIds ?? const ['alessio'],
+        active: _active,
+        displayOrder: existing?.displayOrder ?? 100,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
+    title: Text(
+      widget.existing == null ? 'Nuovo servizio' : 'Modifica servizio',
+    ),
+    content: SizedBox(
+      width: 460,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _name,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'Nome'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _category,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Categoria',
+              hintText: 'Taglio, Colore, Trattamenti…',
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _description,
+            minLines: 2,
+            maxLines: 3,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'Descrizione'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _duration,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'Durata (min)'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _price,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _save(),
+            decoration: const InputDecoration(labelText: 'Prezzo EUR'),
+          ),
+          SwitchListTile(
+            value: _priceFrom,
+            onChanged: (value) => setState(() => _priceFrom = value),
+            title: const Text('Mostra “a partire da”'),
+          ),
+          SwitchListTile(
+            value: _active,
+            onChanged: (value) => setState(() => _active = value),
+            title: const Text('Prenotabile'),
+          ),
+          if (_validationError case final error?) ...[
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text(AppStrings.cancel),
+      ),
+      FilledButton(onPressed: _save, child: const Text(AppStrings.save)),
+    ],
+  );
+}
+
 class _HoursSection extends ConsumerWidget {
   const _HoursSection();
   static const _days = <String, String>{
@@ -1908,6 +1974,7 @@ class _HoursSection extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          scrollable: true,
           title: Text(label),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2042,6 +2109,7 @@ class _SettingsSectionState extends ConsumerState<_SettingsSection> {
   final _bookingHorizonDays = TextEditingController();
   final _cancellationNoticeHours = TextEditingController();
   var _loaded = false;
+  var _saving = false;
 
   @override
   void dispose() {
@@ -2063,25 +2131,43 @@ class _SettingsSectionState extends ConsumerState<_SettingsSection> {
   }
 
   Future<void> _save() async {
-    await ref.read(appointmentRepositoryProvider).saveStudioConfig({
-      'studioName': _studioName.text.trim(),
-      'supportEmail': _email.text.trim(),
-      'supportPhone': _phone.text.trim(),
-      'address': _address.text.trim(),
-      'timezone': AppConfig.timezone,
-      'currency': AppConfig.currency,
-      'reminderTime': _reminder.text.trim(),
-      'slotMinutes': _setting(_slotMinutes, 30).clamp(5, 120),
-      'minimumLeadMinutes': _setting(_minimumLeadMinutes, 120).clamp(0, 43200),
-      'bookingHorizonDays': _setting(_bookingHorizonDays, 90).clamp(1, 730),
-      'cancellationNoticeHours': _setting(
-        _cancellationNoticeHours,
-        24,
-      ).clamp(0, 720),
-    });
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Impostazioni salvate.')));
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(appointmentRepositoryProvider).saveStudioConfig({
+        'studioName': _studioName.text.trim(),
+        'supportEmail': _email.text.trim(),
+        'supportPhone': _phone.text.trim(),
+        'address': _address.text.trim(),
+        'timezone': AppConfig.timezone,
+        'currency': AppConfig.currency,
+        'reminderTime': _reminder.text.trim(),
+        'slotMinutes': _setting(_slotMinutes, 30).clamp(5, 120),
+        'minimumLeadMinutes': _setting(
+          _minimumLeadMinutes,
+          120,
+        ).clamp(0, 43200),
+        'bookingHorizonDays': _setting(_bookingHorizonDays, 90).clamp(1, 730),
+        'cancellationNoticeHours': _setting(
+          _cancellationNoticeHours,
+          24,
+        ).clamp(0, 720),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Impostazioni salvate.')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Salvataggio non riuscito. Riprova tra poco.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -2205,9 +2291,9 @@ class _SettingsSectionState extends ConsumerState<_SettingsSection> {
                     ),
                     const SizedBox(height: 20),
                     FilledButton.icon(
-                      onPressed: _save,
+                      onPressed: _saving ? null : _save,
                       icon: const Icon(Icons.save_outlined),
-                      label: const Text(AppStrings.save),
+                      label: Text(_saving ? 'Salvataggio…' : AppStrings.save),
                     ),
                   ],
                 ),
@@ -2225,13 +2311,13 @@ Future<String?> _textDialog(
   required String title,
   required String label,
 }) async {
-  final controller = TextEditingController();
+  var text = '';
   final value = await showDialog<String>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(title),
       content: TextField(
-        controller: controller,
+        onChanged: (value) => text = value,
         autofocus: true,
         decoration: InputDecoration(labelText: label),
       ),
@@ -2241,13 +2327,12 @@ Future<String?> _textDialog(
           child: const Text(AppStrings.cancel),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, controller.text.trim()),
+          onPressed: () => Navigator.pop(context, text.trim()),
           child: const Text(AppStrings.confirm),
         ),
       ],
     ),
   );
-  controller.dispose();
   return value;
 }
 

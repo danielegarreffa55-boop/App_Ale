@@ -11,6 +11,25 @@ import '../../appointments/domain/appointment_models.dart';
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
+  Future<void> _resendVerification(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(authRepositoryProvider).resendEmailVerification();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Email di verifica inviata.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invio non riuscito. Riprova tra poco.'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(clientAppointmentsProvider);
@@ -49,9 +68,7 @@ class HomePage extends ConsumerWidget {
                         'Apri il link che ti abbiamo inviato per proteggere il tuo account.',
                       ),
                       trailing: TextButton(
-                        onPressed: () => ref
-                            .read(authRepositoryProvider)
-                            .resendEmailVerification(),
+                        onPressed: () => _resendVerification(context, ref),
                         child: const Text('Reinvia'),
                       ),
                     ),

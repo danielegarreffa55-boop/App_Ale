@@ -101,16 +101,19 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   }
 
   Future<void> _forgotPassword() async {
-    final controller = TextEditingController(text: _email.text);
+    var enteredEmail = _email.text;
     final email = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reimposta password'),
         content: TextField(
-          controller: controller,
+          onChanged: (value) => enteredEmail = value,
           keyboardType: TextInputType.emailAddress,
           autofocus: true,
-          decoration: const InputDecoration(labelText: AppStrings.email),
+          decoration: InputDecoration(
+            labelText: AppStrings.email,
+            hintText: enteredEmail.isEmpty ? null : enteredEmail,
+          ),
         ),
         actions: [
           TextButton(
@@ -118,13 +121,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
             child: const Text(AppStrings.cancel),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
+            onPressed: () => Navigator.pop(context, enteredEmail),
             child: const Text('Invia link'),
           ),
         ],
       ),
     );
-    controller.dispose();
     if (email == null || email.trim().isEmpty) return;
     try {
       await ref.read(authRepositoryProvider).sendPasswordReset(email);
@@ -143,32 +145,31 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
+      // Keep the visual hierarchy stable while iOS animates its keyboard.  The
+      // scroll view, rather than swapping widgets or re-centring the page,
+      // handles the reduced viewport.
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: EdgeInsets.fromLTRB(20, keyboardVisible ? 8 : 24, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
                 children: [
-                  if (keyboardVisible) ...[
-                    const BrandWordmark(),
-                    const SizedBox(height: 12),
-                  ] else ...[
-                    const BrandLogo(),
-                    const SizedBox(height: 16),
-                    Text(
-                      _register ? 'Crea il tuo profilo cliente' : 'Bentornato. Il tuo prossimo appuntamento ti aspetta.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 28),
-                  ],
+                  const BrandWordmark(),
+                  const SizedBox(height: 20),
+                  Text(
+                    _register ? 'Crea il tuo profilo cliente' : 'Bentornato. Il tuo prossimo appuntamento ti aspetta.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
                   Card(
                     child: Padding(
-                      padding: EdgeInsets.all(keyboardVisible ? 18 : 24),
+                      padding: const EdgeInsets.all(24),
                       child: Form(
                         key: _formKey,
                         child: AutofillGroup(

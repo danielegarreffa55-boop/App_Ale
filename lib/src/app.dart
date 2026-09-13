@@ -24,6 +24,8 @@ class SalonApp extends StatefulWidget {
 }
 
 class _SalonAppState extends State<SalonApp> {
+  late final Future<void> _sessionInitialization = AuthRepository.instance
+      .initialize();
   late final router = createAppRouter(
     widget.backendReady,
     AuthRepository.instance,
@@ -39,6 +41,17 @@ class _SalonAppState extends State<SalonApp> {
       localizationsDelegates: SalonApp.localizationsDelegates,
       supportedLocales: SalonApp.supportedLocales,
       routerConfig: router,
+      builder: (context, child) => FutureBuilder<void>(
+        future: _sessionInitialization,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return child ?? const SizedBox.shrink();
+          }
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        },
+      ),
     );
   }
 }

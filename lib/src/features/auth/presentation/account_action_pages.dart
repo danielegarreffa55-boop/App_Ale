@@ -183,9 +183,12 @@ class _AccountActionScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    resizeToAvoidBottomInset: true,
     body: SafeArea(
-      child: Center(
+      child: Align(
+        alignment: Alignment.topCenter,
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(20),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
