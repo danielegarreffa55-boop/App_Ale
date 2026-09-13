@@ -18,6 +18,7 @@ DAY_KEYS = (
     "sunday",
 )
 
+
 DEFAULT_OPENING_HOURS: dict[str, dict[str, Any]] = {
     "monday": {"enabled": True, "open": "09:00", "close": "18:00", "breaks": []},
     "tuesday": {"enabled": True, "open": "09:00", "close": "18:00", "breaks": []},
