@@ -7,6 +7,7 @@ import '../../../core/utils/date_time_x.dart';
 import '../../../core/network/backend_api.dart';
 import '../../../providers.dart';
 import '../../../shared/async_value_view.dart';
+import '../../../shared/dialog_action_row.dart';
 import '../domain/appointment_models.dart';
 
 String bookingRequestErrorMessage(Object error) {
@@ -57,22 +58,72 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     });
   }
 
+  ({DateTime first, DateTime last}) _dateBounds() {
+    final first = DateUtils.dateOnly(DateTime.now());
+    final config = ref.read(studioConfigProvider).value ?? const {};
+    final horizonDays = (config['bookingHorizonDays'] as num?)?.toInt() ?? 90;
+    return (
+      first: first,
+      last: first.add(Duration(days: horizonDays.clamp(1, 730))),
+    );
+  }
+
+  void _changeDay(int offset) {
+    final next = _day.add(Duration(days: offset));
+    final bounds = _dateBounds();
+    if (next.isBefore(bounds.first) || next.isAfter(bounds.last)) return;
+    _day = next;
+    _loadSlots();
+  }
+
   Future<void> _pickDay() async {
-    final now = DateUtils.dateOnly(DateTime.now());
-    final studioConfig = ref.read(studioConfigProvider).value ?? const {};
-    final horizonDays =
-        (studioConfig['bookingHorizonDays'] as num?)?.toInt() ?? 90;
+    final bounds = _dateBounds();
     final day = await showDatePicker(
       context: context,
-      initialDate: _day.isBefore(now) ? now : _day,
-      firstDate: now,
-      lastDate: now.add(Duration(days: horizonDays.clamp(1, 730))),
+      initialDate: _day.isBefore(bounds.first)
+          ? bounds.first
+          : _day.isAfter(bounds.last)
+          ? bounds.last
+          : _day,
+      firstDate: bounds.first,
+      lastDate: bounds.last,
       locale: const Locale('it', 'IT'),
       helpText: 'Scegli il giorno',
     );
     if (day == null) return;
     _day = day;
     _loadSlots();
+  }
+
+  Future<void> _pickTime(List<AvailabilitySlot> slots) async {
+    final chosen = await showModalBottomSheet<AvailabilitySlot>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text(
+                'Scegli un orario',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            for (final slot in slots)
+              ListTile(
+                leading: const Icon(Icons.access_time_rounded),
+                title: Text(slot.startAt.italianTime),
+                trailing: slot.startAt == _selectedSlot?.startAt
+                    ? const Icon(Icons.check_circle_rounded)
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, slot),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chosen != null && mounted) setState(() => _selectedSlot = chosen);
   }
 
   Future<void> _submit() async {
@@ -88,13 +139,11 @@ class _BookingPageState extends ConsumerState<BookingPage> {
           'La richiesta dovrà essere confermata dallo studio.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Indietro'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Invia richiesta'),
+          DialogActionRow(
+            cancelLabel: 'Indietro',
+            confirmLabel: 'Invia richiesta',
+            onCancel: () => Navigator.pop(context, false),
+            onConfirm: () => Navigator.pop(context, true),
           ),
         ],
       ),
@@ -160,6 +209,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   @override
   Widget build(BuildContext context) {
     final services = ref.watch(servicesProvider);
+    final bounds = _dateBounds();
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -272,15 +322,32 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _pickDay,
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      label: Text(
-                        DateFormat('EEEE d MMMM', 'it_IT').format(_day),
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Giorno precedente',
+                        onPressed: _day.isAfter(bounds.first)
+                            ? () => _changeDay(-1)
+                            : null,
+                        icon: const Icon(Icons.chevron_left_rounded),
                       ),
-                    ),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickDay,
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          label: Text(
+                            DateFormat('EEE d MMM', 'it_IT').format(_day),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Giorno successivo',
+                        onPressed: _day.isBefore(bounds.last)
+                            ? () => _changeDay(1)
+                            : null,
+                        icon: const Icon(Icons.chevron_right_rounded),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   if (_slots case final slotsFuture?)
@@ -327,22 +394,18 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                             ),
                           );
                         }
-                        return Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: slots.map((slot) {
-                            final selected =
-                                slot.startAt == _selectedSlot?.startAt;
-                            return ChoiceChip(
-                              key: Key(
-                                'slot-${slot.startAt.toIso8601String()}',
-                              ),
-                              selected: selected,
-                              onSelected: (_) =>
-                                  setState(() => _selectedSlot = slot),
-                              label: Text(slot.startAt.italianTime),
-                            );
-                          }).toList(),
+                        return SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const Key('bookingTimePickerButton'),
+                            onPressed: () => _pickTime(slots),
+                            icon: const Icon(Icons.access_time_rounded),
+                            label: Text(
+                              _selectedSlot == null
+                                  ? 'Scegli orario (${slots.length} disponibili)'
+                                  : 'Orario ${_selectedSlot!.startAt.italianTime}',
+                            ),
+                          ),
                         );
                       },
                     ),

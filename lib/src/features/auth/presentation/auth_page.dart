@@ -6,6 +6,7 @@ import '../../../core/l10n/app_strings.dart';
 import '../../../core/network/backend_api.dart';
 import '../../../providers.dart';
 import '../../../shared/brand_logo.dart';
+import '../../../shared/dialog_action_row.dart';
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({this.checkExistingSession = true, super.key});
@@ -116,13 +117,11 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(AppStrings.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, enteredEmail),
-            child: const Text('Invia link'),
+          DialogActionRow(
+            cancelLabel: AppStrings.cancel,
+            confirmLabel: 'Invia link',
+            onCancel: () => Navigator.pop(context),
+            onConfirm: () => Navigator.pop(context, enteredEmail),
           ),
         ],
       ),

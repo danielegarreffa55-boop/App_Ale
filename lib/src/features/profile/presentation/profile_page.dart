@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../providers.dart';
+import '../../../shared/dialog_action_row.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -14,25 +15,6 @@ class ProfilePage extends ConsumerStatefulWidget {
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   var _notificationBusy = false;
-
-  Future<void> _resendVerification() async {
-    try {
-      await ref.read(authRepositoryProvider).resendEmailVerification();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email di verifica inviata.')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invio non riuscito. Riprova tra poco.'),
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _enableNotifications() async {
     setState(() => _notificationBusy = true);
@@ -73,16 +55,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           'Questa operazione non può essere annullata.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Mantieni account'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Elimina definitivamente'),
+          DialogActionRow(
+            cancelLabel: 'Mantieni account',
+            confirmLabel: 'Elimina definitivamente',
+            onCancel: () => Navigator.pop(context, false),
+            onConfirm: () => Navigator.pop(context, true),
+            destructive: true,
           ),
         ],
       ),
@@ -145,17 +123,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                         ),
                       ),
-                      if (user != null && !user.emailVerified) ...[
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.mark_email_unread_outlined),
-                          title: const Text('Email non verificata'),
-                          trailing: TextButton(
-                            onPressed: _resendVerification,
-                            child: const Text('Reinvia'),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),

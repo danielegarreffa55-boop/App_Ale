@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers.dart';
 import '../../../core/network/backend_api.dart';
 import '../../../shared/async_value_view.dart';
+import '../../../shared/dialog_action_row.dart';
 
 class OwnerRolesSection extends ConsumerStatefulWidget {
   const OwnerRolesSection({super.key});
@@ -67,13 +68,11 @@ class _OwnerRolesSectionState extends ConsumerState<OwnerRolesSection> {
           '“${_roleLabel(nextRole)}”?\n\n${_roleDescription(nextRole)}',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Conferma'),
+          DialogActionRow(
+            cancelLabel: 'Annulla',
+            confirmLabel: 'Conferma',
+            onCancel: () => Navigator.pop(context, false),
+            onConfirm: () => Navigator.pop(context, true),
           ),
         ],
       ),

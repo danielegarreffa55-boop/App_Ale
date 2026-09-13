@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../../core/config/app_config.dart';
@@ -42,6 +43,7 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
   static const _hourHeight = 72.0;
   static const _slotMinutes = 30;
   final _scrollController = ScrollController();
+  int? _highlightedSlotMinute;
 
   @override
   void initState() {
@@ -56,6 +58,9 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
         (oldWidget.appointments.isEmpty && widget.appointments.isNotEmpty) ||
         (oldWidget.blocks.isEmpty && widget.blocks.isNotEmpty)) {
       _scrollToRelevantTime();
+    }
+    if (!_sameDay(oldWidget.day, widget.day)) {
+      _highlightedSlotMinute = null;
     }
   }
 
@@ -119,11 +124,16 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
                     ),
                     for (var index = 0; index < durationHours; index++) ...[
                       _TimeLine(
+                        key: ValueKey('hour-line-${widget.startHour + index}'),
+                        top: index * _hourHeight,
+                        gutterWidth: gutterWidth,
+                        strong: true,
+                      ),
+                      _TimeLabel(
                         top: index * _hourHeight,
                         gutterWidth: gutterWidth,
                         label:
                             '${(widget.startHour + index).toString().padLeft(2, '0')}:00',
-                        strong: true,
                       ),
                       _TimeLine(
                         top: index * _hourHeight + _hourHeight / 2,
@@ -140,6 +150,19 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
                       gutterWidth: gutterWidth,
                       totalHeight: totalHeight,
                     ),
+                    if (_highlightedSlotMinute case final minute?)
+                      Positioned(
+                        top: _minuteToOffset(minute),
+                        height: _hourHeight / 2,
+                        left: gutterWidth,
+                        right: 0,
+                        child: IgnorePointer(
+                          child: ColoredBox(
+                            color: Theme.of(context).colorScheme.primary
+                                .withValues(alpha: 0.14),
+                          ),
+                        ),
+                      ),
                     Positioned(
                       top: 0,
                       bottom: 0,
@@ -147,7 +170,14 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
                       right: 0,
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
-                        onTapDown: (details) =>
+                        onTapDown: (details) => setState(() {
+                          _highlightedSlotMinute = _slotAt(
+                            details.localPosition.dy,
+                          );
+                        }),
+                        onTapCancel: () =>
+                            setState(() => _highlightedSlotMinute = null),
+                        onTapUp: (details) =>
                             _handleSlotTap(details.localPosition.dy),
                       ),
                     ),
@@ -218,7 +248,7 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
     ];
   }
 
-  void _handleSlotTap(double offset) {
+  int? _slotAt(double offset) {
     final rawMinute = widget.startHour * 60 + offset / _hourHeight * 60;
     final minute = (rawMinute / _slotMinutes).floor() * _slotMinutes;
     final openingStart = widget.openingStartMinute;
@@ -227,8 +257,19 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
         openingEnd == null ||
         minute < openingStart ||
         minute >= openingEnd) {
+      return null;
+    }
+    return minute;
+  }
+
+  void _handleSlotTap(double offset) {
+    final minute = _slotAt(offset);
+    if (minute == null) {
+      setState(() => _highlightedSlotMinute = null);
       return;
     }
+    setState(() => _highlightedSlotMinute = minute);
+    HapticFeedback.selectionClick();
     final hour = minute ~/ 60;
     final minuteOfHour = minute % 60;
     final location = tz.getLocation(AppConfig.timezone);
@@ -258,6 +299,7 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
     final completed = appointment.status == AppointmentStatus.completed;
     final theme = Theme.of(context);
     return Positioned(
+      key: ValueKey('appointment-${appointment.id}'),
       top: position.$1,
       left: gutterWidth + 7,
       right: 8,
@@ -452,10 +494,8 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
     if (visibleEnd <= visibleStart) return null;
     final top = _minuteToOffset(visibleStart);
     final naturalHeight = (visibleEnd - visibleStart) / 60 * _hourHeight;
-    final height = math
-        .max(32.0, naturalHeight - 3)
-        .clamp(0, totalHeight - top);
-    return (top + 1.5, height.toDouble());
+    final inset = math.min(2.0, naturalHeight / 4);
+    return (top + inset, naturalHeight - inset * 2);
   }
 
   double _minuteToOffset(num minute) =>
@@ -481,15 +521,14 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
 
 class _TimeLine extends StatelessWidget {
   const _TimeLine({
+    super.key,
     required this.top,
     required this.gutterWidth,
-    this.label,
     this.strong = false,
   });
 
   final double top;
   final double gutterWidth;
-  final String? label;
   final bool strong;
 
   @override
@@ -497,39 +536,43 @@ class _TimeLine extends StatelessWidget {
     final theme = Theme.of(context);
     return Positioned(
       top: top,
-      left: 0,
+      left: gutterWidth,
       right: 0,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: gutterWidth - 8,
-            child: Transform.translate(
-              offset: const Offset(0, -8),
-              child: Text(
-                label ?? '',
-                textAlign: TextAlign.right,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.58),
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Divider(
-              height: 1,
-              thickness: strong ? 1 : 0.5,
-              color: theme.colorScheme.outlineVariant.withValues(
-                alpha: strong ? 0.7 : 0.38,
-              ),
-            ),
-          ),
-        ],
+      height: strong ? 1 : 0.5,
+      child: ColoredBox(
+        color: theme.colorScheme.outlineVariant.withValues(
+          alpha: strong ? 0.7 : 0.38,
+        ),
       ),
     );
   }
+}
+
+class _TimeLabel extends StatelessWidget {
+  const _TimeLabel({
+    required this.top,
+    required this.gutterWidth,
+    required this.label,
+  });
+
+  final double top;
+  final double gutterWidth;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Positioned(
+    top: top == 0 ? 0 : top - 9,
+    left: 0,
+    width: gutterWidth - 8,
+    child: Text(
+      label,
+      textAlign: TextAlign.right,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.58),
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    ),
+  );
 }
 
 class _ClosedArea extends StatelessWidget {

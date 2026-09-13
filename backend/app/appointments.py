@@ -93,8 +93,6 @@ def create_request(
 ) -> str:
     user_id = str(user["_id"])
     rate_limit(db, user_id, "createAppointment", 10, 3600)
-    if user.get("emailVerified") is not True:
-        raise failed_precondition("EMAIL_NOT_VERIFIED")
     service = db.services.find_one({"_id": service_id, "active": True})
     if not service:
         raise not_found("SERVICE_NOT_FOUND")

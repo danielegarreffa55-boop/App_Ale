@@ -12,6 +12,7 @@ import '../../../providers.dart';
 import '../../../shared/appointment_card.dart';
 import '../../../shared/async_value_view.dart';
 import '../../../shared/brand_logo.dart';
+import '../../../shared/dialog_action_row.dart';
 import '../../appointments/domain/appointment_models.dart';
 import 'admin_day_calendar.dart';
 import 'owner_roles_section.dart';
@@ -1035,10 +1036,36 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
     var clientId = clients.first['id']! as String;
     var serviceId = activeServices.first.id;
     DateTime? startAt = initialStartAt;
+    final earliest = DateUtils.dateOnly(DateTime.now());
+    final latest = earliest.add(const Duration(days: 730));
+    DateTime dateFor(DateTime? value) {
+      final local = value?.inStudioTimezone ?? _selectedDay;
+      final day = DateUtils.dateOnly(
+        DateTime(local.year, local.month, local.day),
+      );
+      if (day.isBefore(earliest)) return earliest;
+      if (day.isAfter(latest)) return latest;
+      return day;
+    }
+
+    DateTime combine(DateTime day, TimeOfDay time) => tz.TZDateTime(
+      tz.getLocation(AppConfig.timezone),
+      day.year,
+      day.month,
+      day.day,
+      time.hour,
+      time.minute,
+    );
+    TimeOfDay selectedTime() {
+      final local = startAt?.inStudioTimezone;
+      return TimeOfDay(hour: local?.hour ?? 9, minute: local?.minute ?? 0);
+    }
+
     final submitted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          scrollable: true,
           title: const Text('Nuovo appuntamento'),
           content: SizedBox(
             width: 440,
@@ -1075,30 +1102,93 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
                   onChanged: (value) => serviceId = value!,
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  title: Text(startAt?.italianDateTime ?? 'Scegli data e ora'),
-                  trailing: const Icon(Icons.calendar_month_outlined),
-                  onTap: () async {
-                    final picked = await _pickDateTime(
-                      context,
-                      initial: startAt,
-                    );
-                    if (picked != null) setDialogState(() => startAt = picked);
-                  },
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Giorno precedente',
+                      onPressed: dateFor(startAt).isAfter(earliest)
+                          ? () => setDialogState(
+                              () => startAt = combine(
+                                dateFor(startAt)
+                                    .subtract(const Duration(days: 1)),
+                                selectedTime(),
+                              ),
+                            )
+                          : null,
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: dateFor(startAt),
+                            firstDate: earliest,
+                            lastDate: latest,
+                            locale: const Locale('it', 'IT'),
+                          );
+                          if (picked != null && dialogContext.mounted) {
+                            setDialogState(
+                              () => startAt = combine(picked, selectedTime()),
+                            );
+                          }
+                        },
+                        icon: const Icon(
+                          Icons.calendar_month_outlined,
+                          size: 18,
+                        ),
+                        label: Text(
+                          DateFormat(
+                            'EEE d MMM',
+                            'it_IT',
+                          ).format(dateFor(startAt)),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Giorno successivo',
+                      onPressed: dateFor(startAt).isBefore(latest)
+                          ? () => setDialogState(
+                              () => startAt = combine(
+                                dateFor(startAt).add(const Duration(days: 1)),
+                                selectedTime(),
+                              ),
+                            )
+                          : null,
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showTimePicker(
+                        context: dialogContext,
+                        initialTime: selectedTime(),
+                      );
+                      if (picked != null && dialogContext.mounted) {
+                        setDialogState(
+                          () => startAt = combine(dateFor(startAt), picked),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.access_time_rounded),
+                    label: Text('Orario ${selectedTime().format(context)}'),
+                  ),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text(AppStrings.cancel),
-            ),
-            FilledButton(
-              onPressed: startAt == null
+            DialogActionRow(
+              cancelLabel: AppStrings.cancel,
+              confirmLabel: 'Crea e conferma',
+              onCancel: () => Navigator.pop(dialogContext, false),
+              onConfirm: startAt == null
                   ? null
                   : () => Navigator.pop(dialogContext, true),
-              child: const Text('Crea e conferma'),
             ),
           ],
         ),
@@ -1938,11 +2028,12 @@ class _ServiceEditorDialogState extends State<_ServiceEditorDialog> {
       ),
     ),
     actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text(AppStrings.cancel),
+      DialogActionRow(
+        cancelLabel: AppStrings.cancel,
+        confirmLabel: AppStrings.save,
+        onCancel: () => Navigator.pop(context),
+        onConfirm: _save,
       ),
-      FilledButton(onPressed: _save, child: const Text(AppStrings.save)),
     ],
   );
 }
@@ -2013,13 +2104,11 @@ class _HoursSection extends ConsumerWidget {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text(AppStrings.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text(AppStrings.save),
+            DialogActionRow(
+              cancelLabel: AppStrings.cancel,
+              confirmLabel: AppStrings.save,
+              onCancel: () => Navigator.pop(dialogContext, false),
+              onConfirm: () => Navigator.pop(dialogContext, true),
             ),
           ],
         ),
@@ -2322,13 +2411,11 @@ Future<String?> _textDialog(
         decoration: InputDecoration(labelText: label),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text(AppStrings.cancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, text.trim()),
-          child: const Text(AppStrings.confirm),
+        DialogActionRow(
+          cancelLabel: AppStrings.cancel,
+          confirmLabel: AppStrings.confirm,
+          onCancel: () => Navigator.pop(context),
+          onConfirm: () => Navigator.pop(context, text.trim()),
         ),
       ],
     ),

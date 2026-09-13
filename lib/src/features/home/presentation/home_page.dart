@@ -11,25 +11,6 @@ import '../../appointments/domain/appointment_models.dart';
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
-  Future<void> _resendVerification(BuildContext context, WidgetRef ref) async {
-    try {
-      await ref.read(authRepositoryProvider).resendEmailVerification();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email di verifica inviata.')),
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invio non riuscito. Riprova tra poco.'),
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(clientAppointmentsProvider);
@@ -57,23 +38,6 @@ class HomePage extends ConsumerWidget {
                   'Benvenuto da ${AppConfig.studioName}.',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                if (user != null && !user.emailVerified) ...[
-                  const SizedBox(height: 20),
-                  Card(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    child: ListTile(
-                      leading: const Icon(Icons.mark_email_unread_outlined),
-                      title: const Text('Verifica il tuo indirizzo email'),
-                      subtitle: const Text(
-                        'Apri il link che ti abbiamo inviato per proteggere il tuo account.',
-                      ),
-                      trailing: TextButton(
-                        onPressed: () => _resendVerification(context, ref),
-                        child: const Text('Reinvia'),
-                      ),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 28),
                 Row(
                   children: [

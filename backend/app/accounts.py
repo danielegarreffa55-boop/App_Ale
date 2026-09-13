@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -30,7 +29,7 @@ def public_user(user: dict[str, Any]) -> dict[str, Any]:
 
 def register(
     db: Database[dict[str, Any]], data: dict[str, Any]
-) -> tuple[dict[str, Any], str]:
+) -> dict[str, Any]:
     now = utc_now()
     user = {
         "_id": str(uuid4()),
@@ -52,10 +51,7 @@ def register(
         db.users.insert_one(user)
     except DuplicateKeyError as error:
         raise ApiError(409, "already-exists", "EMAIL_ALREADY_IN_USE") from error
-    token = auth.create_opaque_token(
-        db, user["_id"], "verify-email", timedelta(hours=24)
-    )
-    return user, token
+    return user
 
 
 def authenticate(

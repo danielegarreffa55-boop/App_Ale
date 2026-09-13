@@ -75,11 +75,22 @@ void main() {
     expect(find.text('09:00'), findsOneWidget);
     expect(find.text('Mario Rossi'), findsOneWidget);
     expect(find.textContaining('Pausa pranzo'), findsOneWidget);
+    final hourLineTop = tester
+        .getTopLeft(find.byKey(const ValueKey('hour-line-10')))
+        .dy;
+    final appointmentTop = tester
+        .getTopLeft(find.byKey(const ValueKey('appointment-appointment-1')))
+        .dy;
+    expect(appointmentTop - hourLineTop, closeTo(2, 0.1));
 
     await tester.tap(find.text('Mario Rossi'));
     expect(appointmentOpened, isTrue);
 
-    await tester.tapAt(const Offset(220, 456));
+    final gesture = await tester.startGesture(const Offset(220, 456));
+    await tester.pump();
+    expect(selectedSlot, isNull);
+    await gesture.up();
+    await tester.pump();
     expect(selectedSlot, isNotNull);
     expect(selectedSlot!.minute % 30, 0);
     expect(tester.takeException(), isNull);

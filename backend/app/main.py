@@ -138,11 +138,8 @@ def ready() -> dict[str, str]:
 def register(body: RegisterInput) -> dict[str, Any]:
     db = database()
     appointments.rate_limit(db, str(body.email).lower(), "register", 5, 3600)
-    user, verification_token = accounts.register(db, body.model_dump())
-    mail.send_verification(user["email"], verification_token)
+    user = accounts.register(db, body.model_dump())
     response = _auth_response(user, auth.create_token_pair(db, user))
-    if settings().expose_dev_tokens and settings().environment != "production":
-        response["verificationToken"] = verification_token
     return response
 
 

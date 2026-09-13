@@ -244,7 +244,7 @@ def test_agenda_block_warns_but_does_not_prevent_confirmation(
     assert accepted.status_code == 200
 
 
-def test_unverified_email_cannot_create_appointment(
+def test_unverified_email_can_create_appointment_while_verification_is_disabled(
     client: TestClient, db: Any
 ) -> None:
     _seed_booking_data(db)
@@ -257,8 +257,11 @@ def test_unverified_email_cannot_create_appointment(
         },
         headers=_authorization(session),
     )
-    assert response.status_code == 409
-    assert response.json()["error"]["message"] == "EMAIL_NOT_VERIFIED"
+    assert response.status_code == 201
+    assert (
+        db.appointments.find_one({"clientId": session["user"]["id"]})
+        is not None
+    )
 
 
 def test_email_verification_and_password_reset_are_single_use(

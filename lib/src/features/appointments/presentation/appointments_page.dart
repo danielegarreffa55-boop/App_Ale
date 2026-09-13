@@ -6,6 +6,7 @@ import '../../../core/network/backend_api.dart';
 import '../../../providers.dart';
 import '../../../shared/appointment_card.dart';
 import '../../../shared/async_value_view.dart';
+import '../../../shared/dialog_action_row.dart';
 import '../domain/appointment_models.dart';
 
 class AppointmentsPage extends ConsumerWidget {
@@ -25,13 +26,12 @@ class AppointmentsPage extends ConsumerWidget {
           'direttamente lo studio.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Mantieni'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Conferma annullamento'),
+          DialogActionRow(
+            cancelLabel: 'Mantieni',
+            confirmLabel: 'Conferma annullamento',
+            onCancel: () => Navigator.pop(context, false),
+            onConfirm: () => Navigator.pop(context, true),
+            destructive: true,
           ),
         ],
       ),
