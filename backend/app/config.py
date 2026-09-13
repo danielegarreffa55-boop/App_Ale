@@ -107,8 +107,6 @@ def settings() -> Settings:
             raise RuntimeError("MONGODB_TRANSACTIONS must be enabled in production")
         if not result.public_app_url.startswith("https://"):
             raise RuntimeError("PUBLIC_APP_URL must use HTTPS in production")
-        if not result.onesignal_app_id or not result.onesignal_api_key:
-            raise RuntimeError("OneSignal must be configured in production")
         if not result.smtp_host or not result.smtp_from or not result.smtp_password:
             raise RuntimeError("SMTP must be configured in production")
         if result.expose_dev_tokens:

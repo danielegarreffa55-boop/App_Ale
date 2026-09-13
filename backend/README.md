@@ -45,10 +45,9 @@ In ambiente di produzione (`APP_ENV=production`) configurare nel pannello **Vari
 | `JWT_SECRET` | Stringa casuale univoca di almeno 32 byte |
 | `CRON_SECRET` | Stringa casuale univoca di almeno 32 byte, oppure configurare insieme `CRON_OIDC_AUDIENCE` e `CRON_SERVICE_ACCOUNT` |
 | `PUBLIC_APP_URL` | URL HTTPS pubblico usato nei link inviati per email, per esempio `https://prenota.example.it` |
-| `ONESIGNAL_APP_ID`, `ONESIGNAL_API_KEY` | Credenziali OneSignal per le notifiche push |
 | `SMTP_HOST`, `SMTP_FROM`, `SMTP_PASSWORD` | Parametri del servizio email per verifica account e reset password |
 
-Impostare anche `SMTP_PORT`, `SMTP_USERNAME` e `SMTP_USE_TLS` secondo il provider email. `CORS_ORIGINS` contiene gli origin web Flutter separati da virgole, se si pubblica anche Flutter Web; non serve per le app Android/iOS. Conservare i segreti solo nel pannello dell'hosting, mai nel repository o nel JSON Flutter.
+`ONESIGNAL_APP_ID` e `ONESIGNAL_API_KEY` sono opzionali all'avvio: senza entrambi le notifiche push vengono segnate come saltate e non inviate. Configurarli prima di abilitare le notifiche nell'app. Impostare anche `SMTP_PORT`, `SMTP_USERNAME` e `SMTP_USE_TLS` secondo il provider email. `CORS_ORIGINS` contiene gli origin web Flutter separati da virgole, se si pubblica anche Flutter Web; non serve per le app Android/iOS. Conservare i segreti solo nel pannello dell'hosting, mai nel repository o nel JSON Flutter.
 
 L'app verifica queste variabili all'import: se manca una variabile obbligatoria, FastAPI termina **prima** di aprire la porta. Nei log cercare l'ultima riga `RuntimeError: ...` del traceback, che indica il valore da correggere. Dopo che `/healthz` risponde, controllare anche `/readyz`: se non risponde, verificare URI, credenziali e autorizzazioni di rete di MongoDB Atlas.
 
