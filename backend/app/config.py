@@ -86,7 +86,7 @@ def settings() -> Settings:
         smtp_use_tls=_boolean("SMTP_USE_TLS", default=True),
         expose_dev_tokens=_boolean("EXPOSE_DEV_TOKENS", default=False),
     )
-    
+
     if environment == "production":
         if jwt_secret == _DEVELOPMENT_JWT_SECRET or len(jwt_secret.encode()) < 32:
             raise RuntimeError(
@@ -104,6 +104,7 @@ def settings() -> Settings:
             raise RuntimeError(
                 "MONGODB_URI must point to a remote cluster in production"
             )
+        
         # if not result.mongo_transactions:
         #     raise RuntimeError("MONGODB_TRANSACTIONS must be enabled in production")
         # if not result.public_app_url.startswith("https://"):
