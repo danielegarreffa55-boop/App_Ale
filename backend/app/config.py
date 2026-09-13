@@ -104,7 +104,7 @@ def settings() -> Settings:
             raise RuntimeError(
                 "MONGODB_URI must point to a remote cluster in production"
             )
-        
+
         # if not result.mongo_transactions:
         #     raise RuntimeError("MONGODB_TRANSACTIONS must be enabled in production")
         # if not result.public_app_url.startswith("https://"):

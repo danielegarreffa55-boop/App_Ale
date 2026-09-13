@@ -27,9 +27,7 @@ def public_user(user: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def register(
-    db: Database[dict[str, Any]], data: dict[str, Any]
-) -> dict[str, Any]:
+def register(db: Database[dict[str, Any]], data: dict[str, Any]) -> dict[str, Any]:
     now = utc_now()
     user = {
         "_id": str(uuid4()),

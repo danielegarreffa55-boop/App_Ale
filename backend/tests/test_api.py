@@ -258,10 +258,7 @@ def test_unverified_email_can_create_appointment_while_verification_is_disabled(
         headers=_authorization(session),
     )
     assert response.status_code == 201
-    assert (
-        db.appointments.find_one({"clientId": session["user"]["id"]})
-        is not None
-    )
+    assert db.appointments.find_one({"clientId": session["user"]["id"]}) is not None
 
 
 def test_email_verification_and_password_reset_are_single_use(
