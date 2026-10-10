@@ -99,16 +99,12 @@ def test_health_endpoint(client: TestClient) -> None:
 
 
 @pytest.mark.parametrize("action", ["verify-email", "reset-password"])
-def test_account_action_link_opens_native_app(
-    client: TestClient, action: str
-) -> None:
+def test_account_action_link_opens_native_app(client: TestClient, action: str) -> None:
     token = "a" * 48
     response = client.get(f"/open-app/{action}", params={"token": token})
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
-    assert (
-        f'alessiogarreffahair:///{action}?token={token}' in response.text
-    )
+    assert f"alessiogarreffahair:///{action}?token={token}" in response.text
 
 
 def test_unknown_account_action_is_rejected(client: TestClient) -> None:
