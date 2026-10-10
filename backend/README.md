@@ -44,7 +44,8 @@ In ambiente di produzione (`APP_ENV=production`) configurare nel pannello **Vari
 | `MONGODB_TRANSACTIONS` | `true`; il cluster deve supportare le transazioni (replica set) |
 | `JWT_SECRET` | Stringa casuale univoca di almeno 32 byte |
 | `CRON_SECRET` | Stringa casuale univoca di almeno 32 byte, oppure configurare insieme `CRON_OIDC_AUDIENCE` e `CRON_SERVICE_ACCOUNT` |
-| `PUBLIC_APP_URL` | URL HTTPS pubblico usato nei link inviati per email, per esempio `https://prenota.example.it` |
+| `PUBLIC_APP_URL` | URL HTTPS pubblico del backend usato nei link email, per esempio `https://api.example.it` |
+| `APP_DEEP_LINK_SCHEME` | Schema nativo aperto dalla pagina ponte, predefinito `alessiogarreffahair` |
 | `SMTP_HOST`, `SMTP_FROM`, `SMTP_PASSWORD` | Parametri del servizio email per verifica account e reset password |
 
 `ONESIGNAL_APP_ID` e `ONESIGNAL_API_KEY` sono opzionali all'avvio: senza entrambi le notifiche push vengono segnate come saltate e non inviate. Configurarli prima di abilitare le notifiche nell'app. Impostare anche `SMTP_PORT`, `SMTP_USERNAME` e `SMTP_USE_TLS` secondo il provider email. `CORS_ORIGINS` contiene gli origin web Flutter separati da virgole, se si pubblica anche Flutter Web; non serve per le app Android/iOS. Conservare i segreti solo nel pannello dell'hosting, mai nel repository o nel JSON Flutter.

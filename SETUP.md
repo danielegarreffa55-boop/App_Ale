@@ -45,7 +45,9 @@ Access e refresh token sono memorizzati con `flutter_secure_storage`; nessun seg
 
 ## Email di verifica e reset
 
-Configurare `SMTP_HOST`, porta, utente, password e mittente verificato. `PUBLIC_APP_URL` deve puntare al dominio HTTPS che ospita il client Flutter Web. Le email generano collegamenti hash `/#/verify-email` e `/#/reset-password`, quindi funzionano anche su hosting statico senza regole di rewrite. Le due pagine sono già presenti nel router Flutter.
+Configurare `SMTP_HOST`, porta, utente, password SMTP e mittente verificato. `PUBLIC_APP_URL` deve puntare all'URL HTTPS pubblico del backend. Il backend espone due piccole pagine ponte sotto `/open-app/`: aprono direttamente le schermate native di verifica email e reset password tramite lo schema `alessiogarreffahair`. Non serve distribuire un frontend web separato.
+
+La password dell'account email non deve essere usata come password SMTP. Usare sempre una password applicativa o un token SMTP generato dal provider e conservarlo esclusivamente nei secret dell'hosting.
 
 ## OneSignal
 

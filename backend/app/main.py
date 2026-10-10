@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
+from html import escape
 import logging
 import secrets
 from typing import Annotated, Any
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.oauth2 import id_token as google_id_token
 from pymongo import ASCENDING, DESCENDING
@@ -134,12 +136,67 @@ def ready() -> dict[str, str]:
     return {"status": "ready"}
 
 
+@app.get("/open-app/{action}", response_class=HTMLResponse)
+def open_app(
+    action: str,
+    token: Annotated[str, Query(min_length=32, max_length=512)],
+) -> HTMLResponse:
+    routes = {
+        "verify-email": ("Verifica email", "Apri l’app per verificare il tuo account."),
+        "reset-password": (
+            "Reimposta password",
+            "Apri l’app per scegliere una nuova password.",
+        ),
+    }
+    if action not in routes:
+        raise not_found("ACTION_NOT_FOUND")
+    title, message = routes[action]
+    scheme = settings().app_deep_link_scheme
+    deep_link = f"{scheme}:///{action}?token={quote(token)}"
+    safe_link = escape(deep_link, quote=True)
+    safe_title = escape(title)
+    safe_message = escape(message)
+    return HTMLResponse(
+        content=f"""<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="refresh" content="0;url={safe_link}">
+  <title>{safe_title} · Alessio Garreffa Hair</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0;
+      min-height: 100vh; display: grid; place-items: center; background: #f7f3ee;
+      color: #211a17; }}
+    main {{ max-width: 30rem; padding: 2rem; text-align: center; }}
+    a {{ display: inline-block; margin-top: 1rem; padding: .8rem 1.2rem;
+      border-radius: 999px; background: #211a17; color: white; text-decoration: none; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{safe_title}</h1>
+    <p>{safe_message}</p>
+    <a href="{safe_link}">Apri Alessio Garreffa Hair</a>
+  </main>
+</body>
+</html>""",
+        headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+    )
+
+
 @app.post("/v1/auth/register", status_code=201)
 def register(body: RegisterInput) -> dict[str, Any]:
     db = database()
     appointments.rate_limit(db, str(body.email).lower(), "register", 5, 3600)
     user = accounts.register(db, body.model_dump())
     response = _auth_response(user, auth.create_token_pair(db, user))
+    verification_token = auth.create_opaque_token(
+        db, str(user["_id"]), "verify-email", timedelta(hours=24)
+    )
+    mail.send_verification(user["email"], verification_token)
+    if settings().expose_dev_tokens and settings().environment != "production":
+        response["verificationToken"] = verification_token
     return response
 
 
@@ -288,9 +345,19 @@ def admin_appointments(
     sort_field = "createdAt"
     sort_order = DESCENDING
     if start_at is not None and end_at is not None:
-        query["confirmedStartAt"] = {"$gte": start_at, "$lt": end_at}
-        sort_field = "confirmedStartAt"
-        sort_order = ASCENDING
+        # The daily agenda is also the place where staff manage new requests.
+        # Pending requests do not have ``confirmedStartAt`` yet, so querying only
+        # that field made them disappear as soon as an agenda date was selected.
+        query["$or"] = [
+            {
+                "status": {"$in": ["CONFIRMED", "COMPLETED"]},
+                "confirmedStartAt": {"$gte": start_at, "$lt": end_at},
+            },
+            {
+                "status": "PENDING_ADMIN",
+                "requestedStartAt": {"$gte": start_at, "$lt": end_at},
+            },
+        ]
     documents = (
         database().appointments.find(query).sort(sort_field, sort_order).limit(500)
     )

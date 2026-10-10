@@ -98,6 +98,24 @@ def test_health_endpoint(client: TestClient) -> None:
     }
 
 
+@pytest.mark.parametrize("action", ["verify-email", "reset-password"])
+def test_account_action_link_opens_native_app(
+    client: TestClient, action: str
+) -> None:
+    token = "a" * 48
+    response = client.get(f"/open-app/{action}", params={"token": token})
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert (
+        f'alessiogarreffahair:///{action}?token={token}' in response.text
+    )
+
+
+def test_unknown_account_action_is_rejected(client: TestClient) -> None:
+    response = client.get("/open-app/unknown", params={"token": "a" * 48})
+    assert response.status_code == 404
+
+
 def test_protected_endpoint_requires_bearer_token(client: TestClient) -> None:
     response = client.get(
         "/v1/availability",
@@ -242,6 +260,39 @@ def test_agenda_block_warns_but_does_not_prevent_confirmation(
     assert appointment.status_code == 201
     assert block.status_code == 201
     assert accepted.status_code == 200
+
+
+def test_daily_agenda_includes_pending_requests(client: TestClient, db: Any) -> None:
+    _seed_booking_data(db)
+    session = _register(client, "manager-agenda@example.it")
+    user_id = session["user"]["id"]
+    db.users.update_one(
+        {"_id": user_id},
+        {"$set": {"role": "manager", "emailVerified": True}},
+    )
+    start = _open_start()
+    created = client.post(
+        "/v1/appointments",
+        json={"serviceId": "taglio", "requestedStartAt": start.isoformat()},
+        headers=_authorization(session),
+    )
+    assert created.status_code == 201
+
+    day_start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    agenda = client.get(
+        "/v1/admin/appointments",
+        params={
+            "startAt": day_start.isoformat(),
+            "endAt": (day_start + timedelta(days=1)).isoformat(),
+        },
+        headers=_authorization(session),
+    )
+    assert agenda.status_code == 200
+    items = agenda.json()["items"]
+    assert len(items) == 1
+    assert items[0]["id"] == created.json()["appointmentId"]
+    assert items[0]["status"] == "PENDING_ADMIN"
+    assert items[0]["clientId"] == user_id
 
 
 def test_unverified_email_can_create_appointment_while_verification_is_disabled(

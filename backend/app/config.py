@@ -27,6 +27,7 @@ class Settings:
     access_token_minutes: int
     refresh_token_days: int
     public_app_url: str
+    app_deep_link_scheme: str
     cors_origins: tuple[str, ...]
     timezone: str
     calendar_id: str
@@ -70,6 +71,9 @@ def settings() -> Settings:
         access_token_minutes=int(os.getenv("ACCESS_TOKEN_MINUTES", "15")),
         refresh_token_days=int(os.getenv("REFRESH_TOKEN_DAYS", "30")),
         public_app_url=os.getenv("PUBLIC_APP_URL", "http://localhost:8080"),
+        app_deep_link_scheme=os.getenv(
+            "APP_DEEP_LINK_SCHEME", "alessiogarreffahair"
+        ).strip(),
         cors_origins=origins,
         timezone=os.getenv("APP_TIMEZONE", "Europe/Rome"),
         calendar_id=os.getenv("GOOGLE_CALENDAR_ID", ""),

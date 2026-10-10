@@ -34,7 +34,10 @@ def _send(recipient: str, subject: str, body: str) -> bool:
 
 
 def send_verification(recipient: str, token: str) -> bool:
-    url = f"{settings().public_app_url.rstrip('/')}/#/verify-email?token={quote(token)}"
+    url = (
+        f"{settings().public_app_url.rstrip('/')}/open-app/verify-email"
+        f"?token={quote(token)}"
+    )
     return _send(
         recipient,
         "Verifica il tuo account Alessio Garreffa Hair",
@@ -44,7 +47,8 @@ def send_verification(recipient: str, token: str) -> bool:
 
 def send_password_reset(recipient: str, token: str) -> bool:
     url = (
-        f"{settings().public_app_url.rstrip('/')}/#/reset-password?token={quote(token)}"
+        f"{settings().public_app_url.rstrip('/')}/open-app/reset-password"
+        f"?token={quote(token)}"
     )
     return _send(
         recipient,

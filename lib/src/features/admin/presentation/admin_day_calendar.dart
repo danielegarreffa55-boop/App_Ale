@@ -297,6 +297,7 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
     final position = _eventPosition(start, end, totalHeight);
     if (position == null) return null;
     final completed = appointment.status == AppointmentStatus.completed;
+    final pending = appointment.status == AppointmentStatus.pendingAdmin;
     final theme = Theme.of(context);
     return Positioned(
       key: ValueKey('appointment-${appointment.id}'),
@@ -307,16 +308,20 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
       child: Semantics(
         button: true,
         label:
-            '${appointment.clientName ?? 'Cliente'}, ${appointment.serviceName}, ${start.italianTime}',
+            '${pending ? 'Richiesta in attesa, ' : ''}${appointment.clientName ?? 'Cliente'}, ${appointment.serviceName}, ${start.italianTime}',
         child: Material(
           color: completed
               ? theme.colorScheme.surfaceContainerHighest
+              : pending
+              ? Colors.orange.withValues(alpha: 0.18)
               : theme.colorScheme.primaryContainer,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
             side: BorderSide(
               color: completed
                   ? theme.colorScheme.outline
+                  : pending
+                  ? Colors.orange.shade700
                   : theme.colorScheme.primary.withValues(alpha: 0.78),
             ),
           ),
@@ -329,6 +334,8 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
                   width: 4,
                   color: completed
                       ? theme.colorScheme.outline
+                      : pending
+                      ? Colors.orange.shade700
                       : theme.colorScheme.primary,
                 ),
                 Expanded(
@@ -356,12 +363,14 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
                         ),
                         if (position.$2 >= 31)
                           Text(
-                            '${start.italianTime}–${end.italianTime} · ${appointment.serviceName}',
+                            '${pending ? 'IN ATTESA · ' : ''}${start.italianTime}–${end.italianTime} · ${appointment.serviceName}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color:
                                   (completed
+                                          ? theme.colorScheme.onSurface
+                                          : pending
                                           ? theme.colorScheme.onSurface
                                           : theme
                                                 .colorScheme

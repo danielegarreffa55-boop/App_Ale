@@ -1361,6 +1361,26 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
               if (item.clientPhone case final phone?) Text(phone),
               const SizedBox(height: 16),
               AppointmentStatusChip(status: item.status),
+              if (item.status == AppointmentStatus.pendingAdmin) ...[
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: const Text('Accetta richiesta'),
+                  onTap: () => Navigator.pop(sheetContext, 'accept'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.edit_calendar_outlined),
+                  title: const Text('Proponi un altro orario'),
+                  onTap: () => Navigator.pop(sheetContext, 'counter'),
+                ),
+                ListTile(
+                  textColor: Theme.of(context).colorScheme.error,
+                  iconColor: Theme.of(context).colorScheme.error,
+                  leading: const Icon(Icons.cancel_outlined),
+                  title: const Text('Rifiuta richiesta'),
+                  onTap: () => Navigator.pop(sheetContext, 'reject'),
+                ),
+              ],
               if (item.status == AppointmentStatus.confirmed) ...[
                 const SizedBox(height: 16),
                 ListTile(
@@ -1388,7 +1408,28 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
     );
     if (action == null || !mounted) return;
     try {
-      if (action == 'reschedule') {
+      if (action == 'accept') {
+        await ref.read(appointmentRepositoryProvider).adminAccept(item.id);
+      } else if (action == 'counter') {
+        final startAt = await _pickDateTime(
+          context,
+          initial: item.requestedStartAt,
+        );
+        if (startAt == null) return;
+        await ref
+            .read(appointmentRepositoryProvider)
+            .adminCounterPropose(item.id, startAt);
+      } else if (action == 'reject') {
+        final reason = await _textDialog(
+          context,
+          title: 'Rifiuta richiesta',
+          label: 'Motivo facoltativo',
+        );
+        if (reason == null) return;
+        await ref
+            .read(appointmentRepositoryProvider)
+            .adminReject(item.id, reason: reason.isEmpty ? null : reason);
+      } else if (action == 'reschedule') {
         final startAt = await _pickDateTime(
           context,
           initial: item.confirmedStartAt,
@@ -1507,6 +1548,9 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
               () => _selectedDay = DateTime(today.year, today.month, today.day),
             );
           },
+          hasPendingRequests: (appointments.value ?? const <Appointment>[]).any(
+            (item) => item.status == AppointmentStatus.pendingAdmin,
+          ),
         ),
         const SizedBox(height: 10),
         const _AgendaLegend(),
@@ -1520,6 +1564,7 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
                   items
                       .where(
                         (item) =>
+                            item.status == AppointmentStatus.pendingAdmin ||
                             item.status == AppointmentStatus.confirmed ||
                             item.status == AppointmentStatus.completed,
                       )
@@ -1560,6 +1605,7 @@ class _AgendaDateToolbar extends StatelessWidget {
     required this.onNext,
     required this.onPickDate,
     required this.onToday,
+    required this.hasPendingRequests,
   });
 
   final DateTime day;
@@ -1567,6 +1613,7 @@ class _AgendaDateToolbar extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onPickDate;
   final VoidCallback onToday;
+  final bool hasPendingRequests;
 
   @override
   Widget build(BuildContext context) {
@@ -1613,6 +1660,17 @@ class _AgendaDateToolbar extends StatelessWidget {
               onPressed: onToday,
               icon: const Icon(Icons.today_outlined),
             ),
+            if (hasPendingRequests)
+              const Padding(
+                padding: EdgeInsets.only(right: 6),
+                child: Tooltip(
+                  message: 'Ci sono richieste in attesa per questo giorno',
+                  child: Icon(
+                    Icons.mark_email_unread_outlined,
+                    color: Colors.orange,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
