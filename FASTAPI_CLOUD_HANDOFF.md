@@ -20,17 +20,17 @@ APP_DEEP_LINK_SCHEME=alessiogarreffahair
 ONESIGNAL_APP_ID=9983af4e-6764-4f1a-9ede-023f0711b3c7
 ONESIGNAL_API_KEY=<CHIAVE_REST_ONESIGNAL_DA_RICEVERE_IN_PRIVATO>
 
-SMTP_HOST=<host-del-provider-email>
+SMTP_HOST=smtp.protonmail.ch
 SMTP_PORT=587
-SMTP_USERNAME=<utente-smtp>
-SMTP_PASSWORD=<password-o-token-smtp>
+SMTP_USERNAME=alehairapp@proton.me
+SMTP_PASSWORD=<TOKEN_SMTP_PROTON, NON_PASSWORD_ACCOUNT>
 SMTP_FROM=alehairapp@proton.me
 SMTP_USE_TLS=true
 ```
 
 La chiave `ONESIGNAL_API_KEY` è stata generata nel pannello OneSignal con nome `App Ale Backend Production`: va passata al responsabile del deploy tramite un password manager o altro canale privato, mai tramite Git.
 
-L'indirizzo Proton e la normale password dell'account non sono una configurazione SMTP adatta al server. Occorre usare credenziali SMTP valide fornite da un servizio transazionale (per esempio Brevo o Resend), oppure un token SMTP Proton compatibile con l'account. Se il provider richiede un mittente verificato, verificare `alehairapp@proton.me` prima del test.
+La normale password dell'account Proton non è valida per l'invio SMTP dal server. Generare nelle impostazioni Proton un token SMTP compatibile con l'account e inserirlo come `SMTP_PASSWORD`. Se l'account non consente SMTP submission, usare un servizio transazionale (per esempio Brevo o Resend), verificare il mittente e sostituire host, utente e password con quelli del provider.
 
 Confrontare inoltre le altre variabili obbligatorie con `backend/README.md` e `.env.example`, soprattutto database, autenticazione e ruoli amministrativi già presenti nel deploy.
 
