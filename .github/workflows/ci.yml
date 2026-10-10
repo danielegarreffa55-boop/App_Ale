@@ -79,12 +79,38 @@ jobs:
         env:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
+          PROFILE_PATH="$(find "$HOME/Library/MobileDevice/Provisioning Profiles" -type f -name '*.mobileprovision' -print -quit)"
+          test -n "$PROFILE_PATH"
+          security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"
+          PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print:Name' "$RUNNER_TEMP/profile.plist")"
+
           flutter pub get
-          flutter build ipa \
+          flutter build ios \
             --release \
+            --no-codesign \
             --build-number="$((1000 + BUILD_NUMBER))" \
-            --dart-define-from-file=config/testflight.json \
-            --export-options-plist=ios/ExportOptions-TestFlight.plist
+            --dart-define-from-file=config/testflight.json
+
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            DEVELOPMENT_TEAM=KFLQ4D6F25 \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Apple Distribution' \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            CURRENT_PROJECT_VERSION="$((1000 + BUILD_NUMBER))"
+
+          cp ios/ExportOptions-TestFlight.plist "$RUNNER_TEMP/ExportOptions-TestFlight.plist"
+          /usr/libexec/PlistBuddy -c 'Set :signingStyle manual' "$RUNNER_TEMP/ExportOptions-TestFlight.plist"
+          /usr/libexec/PlistBuddy -c 'Add :provisioningProfiles dict' "$RUNNER_TEMP/ExportOptions-TestFlight.plist"
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:it.studio.salon.salonBooking string $PROFILE_NAME" "$RUNNER_TEMP/ExportOptions-TestFlight.plist"
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportPath build/ios/ipa \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions-TestFlight.plist"
 
       - name: Upload to TestFlight
         env:
