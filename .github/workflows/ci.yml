@@ -94,7 +94,6 @@ jobs:
             -archivePath build/ios/archive/Runner.xcarchive \
             DEVELOPMENT_TEAM=KFLQ4D6F25 \
             CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY='Apple Distribution' \
             CURRENT_PROJECT_VERSION="$((1000 + BUILD_NUMBER))"
 
           xcodebuild -exportArchive \
