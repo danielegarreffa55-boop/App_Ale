@@ -2257,6 +2257,52 @@ class _SettingsSectionState extends ConsumerState<_SettingsSection> {
   final _cancellationNoticeHours = TextEditingController();
   var _loaded = false;
   var _saving = false;
+  var _notificationBusy = false;
+  bool? _notificationsEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshNotificationPermission();
+  }
+
+  Future<void> _refreshNotificationPermission() async {
+    final enabled = await ref
+        .read(notificationServiceProvider)
+        .permissionEnabled();
+    if (mounted) setState(() => _notificationsEnabled = enabled);
+  }
+
+  Future<void> _enableNotifications() async {
+    if (_notificationBusy) return;
+    setState(() => _notificationBusy = true);
+    try {
+      final enabled = await ref
+          .read(notificationServiceProvider)
+          .requestAndRegister(
+            userId: ref.read(authRepositoryProvider).currentUser?.uid,
+          );
+      if (!mounted) return;
+      setState(() => _notificationsEnabled = enabled);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            enabled
+                ? 'Notifiche abilitate su questo dispositivo.'
+                : 'Notifiche non abilitate. Controlla le impostazioni di iOS.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Attivazione notifiche non riuscita.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _notificationBusy = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -2351,100 +2397,139 @@ class _SettingsSectionState extends ConsumerState<_SettingsSection> {
           alignment: Alignment.topLeft,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Dati dello studio',
-                      style: Theme.of(context).textTheme.titleLarge,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Card(
+                  child: ListTile(
+                    leading: Icon(
+                      _notificationsEnabled == true
+                          ? Icons.notifications_active
+                          : Icons.notifications_outlined,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _studioName,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome studio',
+                    title: const Text('Notifiche amministratore'),
+                    subtitle: Text(
+                      _notificationsEnabled == true
+                          ? 'Attive su questo dispositivo.'
+                          : 'Ricevi nuove richieste, annullamenti e risposte.',
+                    ),
+                    trailing: FilledButton.tonal(
+                      onPressed: _notificationBusy
+                          ? null
+                          : _enableNotifications,
+                      child: Text(
+                        _notificationBusy
+                            ? 'Attendi…'
+                            : _notificationsEnabled == true
+                            ? 'Verifica'
+                            : 'Abilita',
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _email,
-                      decoration: const InputDecoration(
-                        labelText: 'Email supporto',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _phone,
-                      decoration: const InputDecoration(labelText: 'Telefono'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _address,
-                      decoration: const InputDecoration(labelText: 'Indirizzo'),
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Automazioni',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _reminder,
-                      decoration: const InputDecoration(
-                        labelText: 'Promemoria giorno prima (HH:mm)',
-                        helperText: 'Timezone Europe/Rome',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _slotMinutes,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Intervallo richieste (minuti)',
-                        helperText: 'Valore iniziale: 30 minuti',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _minimumLeadMinutes,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Anticipo minimo (minuti)',
-                        helperText: 'Valore iniziale: 120 minuti',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _bookingHorizonDays,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Finestra prenotabile (giorni)',
-                        helperText: 'Valore iniziale: 90 giorni',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _cancellationNoticeHours,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Limite annullamento cliente (ore)',
-                        helperText: 'Valore iniziale: 24 ore',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: const Icon(Icons.save_outlined),
-                      label: Text(_saving ? 'Salvataggio…' : AppStrings.save),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Dati dello studio',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _studioName,
+                          decoration: const InputDecoration(
+                            labelText: 'Nome studio',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _email,
+                          decoration: const InputDecoration(
+                            labelText: 'Email supporto',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Telefono',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _address,
+                          decoration: const InputDecoration(
+                            labelText: 'Indirizzo',
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Automazioni',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _reminder,
+                          decoration: const InputDecoration(
+                            labelText: 'Promemoria giorno prima (HH:mm)',
+                            helperText: 'Timezone Europe/Rome',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _slotMinutes,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Intervallo richieste (minuti)',
+                            helperText: 'Valore iniziale: 30 minuti',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _minimumLeadMinutes,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Anticipo minimo (minuti)',
+                            helperText: 'Valore iniziale: 120 minuti',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _bookingHorizonDays,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Finestra prenotabile (giorni)',
+                            helperText: 'Valore iniziale: 90 giorni',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _cancellationNoticeHours,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Limite annullamento cliente (ore)',
+                            helperText: 'Valore iniziale: 24 ore',
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          onPressed: _saving ? null : _save,
+                          icon: const Icon(Icons.save_outlined),
+                          label: Text(
+                            _saving ? 'Salvataggio…' : AppStrings.save,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

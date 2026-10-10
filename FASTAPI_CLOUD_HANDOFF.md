@@ -60,3 +60,20 @@ Se email o push non arrivano, controllare prima i log del backend senza copiare 
 - La chiave APNs Apple `AuthKey_8C2WN66HXN.p8` non è riscaricabile: conservarne una copia cifrata e limitarne l'accesso.
 - Il JSON Firebase Admin SDK e le chiavi OneSignal devono restare fuori dal repository.
 - Ruotare qualsiasi password condivisa in chat e usare token specifici per il servizio quando disponibili.
+
+## Deploy automatico iOS
+
+Il workflow `.github/workflows/ci.yml` pubblica automaticamente una nuova build su TestFlight dopo ogni push riuscito sul branch `main`. Il numero di build è calcolato dal contatore GitHub Actions, così ogni upload rimane univoco. I certificati e le chiavi Apple sono salvati esclusivamente nei GitHub Actions secrets del repository.
+# Android / Google Play
+
+La pipeline GitHub genera un Android App Bundle firmato a ogni push su `main`.
+Il package Android definitivo è `it.studio.salon.salon_booking`.
+
+Per abilitare anche il caricamento automatico nel test interno:
+
+1. creare l'app Ale Hair in Google Play Console con questo package;
+2. concedere al service account GitHub il permesso di rilascio sui canali di test;
+3. creare nel repository la variabile Actions `GOOGLE_PLAY_ANDROID_ENABLED=true`.
+
+Finché la variabile non è attiva, il job costruisce e conserva l'AAB tra gli
+artifact di GitHub senza tentare un caricamento destinato a fallire.

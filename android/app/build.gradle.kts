@@ -13,6 +13,21 @@ if (keystorePropertiesFile.exists()) {
     FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
 }
 
+fun signingValue(propertyName: String, environmentName: String): String? =
+    (keystoreProperties[propertyName] as String?)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(environmentName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = signingValue("storeFile", "ANDROID_UPLOAD_KEYSTORE_PATH")
+val releaseKeyAlias = signingValue("keyAlias", "ANDROID_UPLOAD_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "ANDROID_UPLOAD_KEY_PASSWORD")
+val releaseStorePassword = signingValue("storePassword", "ANDROID_UPLOAD_STORE_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseKeyAlias,
+    releaseKeyPassword,
+    releaseStorePassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "it.studio.salon.salon_booking"
     compileSdk = flutter.compileSdkVersion
@@ -39,12 +54,12 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
+        if (hasReleaseSigning) {
             create("release") {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = releaseKeyAlias!!
+                keyPassword = releaseKeyPassword!!
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword!!
             }
         }
     }

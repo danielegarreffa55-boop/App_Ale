@@ -43,9 +43,22 @@ class NotificationService {
     }
   }
 
+  Future<bool?> permissionEnabled() async {
+    if (!_initialized) return null;
+    try {
+      final permission = await OneSignal.Notifications.permissionNative();
+      return permission == OSNotificationPermission.authorized ||
+          permission == OSNotificationPermission.provisional ||
+          permission == OSNotificationPermission.ephemeral;
+    } catch (error) {
+      debugPrint('OneSignal permission status unavailable: $error');
+      return null;
+    }
+  }
+
   Future<bool> requestAndRegister({String? userId}) async {
     if (!_initialized) return false;
     if (userId != null && userId.isNotEmpty) await OneSignal.login(userId);
-    return OneSignal.Notifications.requestPermission(false);
+    return OneSignal.Notifications.requestPermission(true);
   }
 }

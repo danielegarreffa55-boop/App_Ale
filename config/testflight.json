@@ -1,0 +1,13 @@
+{
+  "STUDIO_NAME": "Alessio Garreffa Hair",
+  "APP_NAME": "Alessio Garreffa Hair",
+  "SUPPORT_EMAIL": "marco.capusso98@gmail.com",
+  "SUPPORT_PHONE": "+39 391 124 6837",
+  "ADDRESS": "Via Cottolengo 44, 10048 Vinovo TO",
+  "TIMEZONE": "Europe/Rome",
+  "CURRENCY": "EUR",
+  "REMINDER_TIME": "18:00",
+  "BACKEND_API_URL": "https://app-ale.fastapicloud.dev",
+  "ONESIGNAL_APP_ID": "9983af4e-6764-4f1a-9ede-023f0711b3c7",
+  "API_POLL_SECONDS": 5
+}

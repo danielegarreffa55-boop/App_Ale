@@ -67,4 +67,5 @@ ui-debug.log
 # Generated configuration and local secret material.
 config/*.json
 !config/*.example.json
+!config/testflight.json
 secrets/
