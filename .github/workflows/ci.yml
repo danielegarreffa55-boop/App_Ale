@@ -79,7 +79,7 @@ jobs:
         env:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
-          PROFILE_PATH="$(find "$HOME/Library/MobileDevice/Provisioning Profiles" -type f -name '*.mobileprovision' -print -quit)"
+          PROFILE_PATH="$(find "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" -type f -name '*.mobileprovision' -print -quit)"
           test -n "$PROFILE_PATH"
           security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"
           PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print:Name' "$RUNNER_TEMP/profile.plist")"
