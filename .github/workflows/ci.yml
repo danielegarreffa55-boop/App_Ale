@@ -78,6 +78,8 @@ jobs:
       - name: Build signed IPA
         env:
           BUILD_NUMBER: ${{ github.run_number }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
           flutter pub get
           flutter build ios \
@@ -92,6 +94,10 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/ios/archive/Runner.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8" \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyIssuerID "$API_ISSUER_ID" \
             DEVELOPMENT_TEAM=KFLQ4D6F25 \
             CODE_SIGN_STYLE=Automatic \
             CURRENT_PROJECT_VERSION="$((1000 + BUILD_NUMBER))"
