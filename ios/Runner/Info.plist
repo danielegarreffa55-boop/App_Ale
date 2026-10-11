@@ -45,6 +45,8 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>La posizione viene utilizzata, previo consenso, per mostrare informazioni e notifiche pertinenti alla tua zona e ai servizi del salone.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
