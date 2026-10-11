@@ -21,8 +21,9 @@ nel repository.
 
 ## Studio
 
-- Indirizzo: Via Cottolengo 44, 10048 Vinovo TO.
-- Telefono: +39 342 535 5594.
+- Indirizzo: Via Cottolengo, 44, 10048 Vinovo TO.
+- Telefono: +39 388 986 5985.
+- Email: alessiogarreffa995@gmail.com.
 - Email e dominio: da definire.
 - Orari, ferie, festività e aperture straordinarie sono modificabili
   dall'amministratore.
@@ -89,7 +90,8 @@ nel repository.
   dall'attività e ospitati in Europa dove supportato.
 - Proprietario iniziale: Alessio; eventuali altri proprietari o gestori sono
   assegnati dal proprietario dalla console.
-- Dominio, email ufficiale, dati legali e testi privacy ancora da definire.
+- Informativa privacy versione 2026-10-11-v2 pubblicata nell'app; email e
+  recapiti operativi configurati.
 - Analytics e diagnostica solo aggregati e necessari, da attivare dopo aver
   definito retention e informativa.
 - Le notifiche sulla lock screen mostrano soltanto studio, giorno e ora.
@@ -97,11 +99,12 @@ nel repository.
 
 ## Questioni ancora aperte
 
-- Ragione sociale/nome legale, P.IVA o C.F. e contatto privacy.
-- Email ufficiale, dominio e account Google proprietario.
+- Ragione sociale/nome anagrafico completo e P.IVA o C.F. del titolare, da
+  inserire nell'informativa appena formalmente confermati.
+- Dominio e account Google proprietario.
 - Orari iniziali reali, catalogo servizi e prezzi.
 - Font o file vettoriali ufficiali del marchio.
 - Convenzione dei titoli degli eventi inseriti a mano in Google Calendar:
   almeno nome cliente e servizio, con telefono facoltativo.
 - Regola finale in caso di doppia conferma richiesta dall'admin.
-- Testo definitivo per ritardi, no-show, privacy e notifiche.
+- Testo definitivo per ritardi e no-show.

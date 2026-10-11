@@ -17,9 +17,9 @@ def main() -> None:
         description="Create the initial MongoDB production configuration.",
     )
     parser.add_argument("--studio-name", default="Alessio Garreffa Hair")
-    parser.add_argument("--phone", default="+39 342 535 5594")
-    parser.add_argument("--email", default="")
-    parser.add_argument("--address", default="Via Cottolengo 44, 10048 Vinovo TO")
+    parser.add_argument("--phone", default="+39 388 986 5985")
+    parser.add_argument("--email", default="alessiogarreffa995@gmail.com")
+    parser.add_argument("--address", default="Via Cottolengo, 44, 10048 Vinovo TO")
     args = parser.parse_args()
     db = database()
     ensure_indexes(db)

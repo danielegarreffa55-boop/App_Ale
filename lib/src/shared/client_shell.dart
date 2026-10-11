@@ -92,18 +92,51 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       final raw = config['announcement'];
       if (raw is! Map) return;
       final announcement = Map<String, dynamic>.from(raw);
+      final id = (announcement['id'] as String? ?? '').trim();
       final title = (announcement['title'] as String? ?? '').trim();
       final message = (announcement['message'] as String? ?? '').trim();
-      if (announcement['active'] != true || title.isEmpty || message.isEmpty) {
+      if (announcement['active'] != true ||
+          id.isEmpty ||
+          title.isEmpty ||
+          message.isEmpty) {
         return;
       }
+      final preferences = ref.read(announcementPreferenceServiceProvider);
+      final dismissed = await preferences.wasDismissed(
+        userId: user.uid,
+        announcementId: id,
+      );
+      if (dismissed) return;
       if (!mounted) return;
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
           icon: const Icon(Icons.campaign_outlined),
-          title: Text(title),
-          content: Text(message),
+          title: Text(title, textAlign: TextAlign.center),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.center),
+              const SizedBox(height: 20),
+              InkWell(
+                onTap: () async {
+                  await preferences.dismiss(
+                    userId: user.uid,
+                    announcementId: id,
+                  );
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: Text(
+                  'Non mostrare più questo avviso',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(context),

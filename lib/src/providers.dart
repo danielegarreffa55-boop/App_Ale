@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/notifications/notification_service.dart';
+import 'core/announcements/announcement_preference_service.dart';
 import 'features/appointments/data/appointment_repository.dart';
 import 'features/appointments/domain/appointment_models.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -14,6 +15,10 @@ final appointmentRepositoryProvider = Provider<AppointmentRepository>(
 final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(),
 );
+final announcementPreferenceServiceProvider =
+    Provider<AnnouncementPreferenceService>(
+      (ref) => AnnouncementPreferenceService(),
+    );
 
 final authStateProvider = StreamProvider<AuthUser?>((ref) {
   return ref.watch(authRepositoryProvider).authStateChanges();

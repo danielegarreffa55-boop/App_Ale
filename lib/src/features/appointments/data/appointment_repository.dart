@@ -141,6 +141,21 @@ class AppointmentRepository {
   Future<void> cancelAppointment(String appointmentId) =>
       _api.post('/v1/appointments/$appointmentId/cancel');
 
+  Future<void> requestAppointmentReschedule(
+    String appointmentId,
+    DateTime proposedStartAt,
+  ) => _api.post('/v1/appointments/$appointmentId/reschedule-request', {
+    'proposedStartAt': proposedStartAt.toUtc().toIso8601String(),
+  });
+
+  Future<void> decideClientRequest(
+    String appointmentId, {
+    required bool accept,
+  }) => _api.post(
+    '/v1/admin/appointments/$appointmentId/client-request-decision',
+    {'accept': accept},
+  );
+
   Future<void> adminCompleteAppointment(String appointmentId) =>
       _api.post('/v1/admin/appointments/$appointmentId/complete');
 

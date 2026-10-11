@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:salon_booking/src/core/announcements/announcement_preference_service.dart';
 import 'package:salon_booking/src/core/notifications/notification_service.dart';
 import 'package:salon_booking/src/features/appointments/data/appointment_repository.dart';
 import 'package:salon_booking/src/features/auth/data/auth_repository.dart';
@@ -47,6 +48,24 @@ class _AppointmentRepository extends AppointmentRepository {
   };
 }
 
+class _AnnouncementPreferences extends AnnouncementPreferenceService {
+  String? dismissedAnnouncementId;
+
+  @override
+  Future<bool> wasDismissed({
+    required String userId,
+    required String announcementId,
+  }) async => false;
+
+  @override
+  Future<void> dismiss({
+    required String userId,
+    required String announcementId,
+  }) async {
+    dismissedAnnouncementId = announcementId;
+  }
+}
+
 void main() {
   testWidgets(
     'mostra l’annuncio anche aprendo una sezione diversa dalla home',
@@ -61,6 +80,7 @@ void main() {
         ],
       );
       final auth = _AuthRepository();
+      final preferences = _AnnouncementPreferences();
 
       await tester.pumpWidget(
         ProviderScope(
@@ -71,6 +91,9 @@ void main() {
             ),
             appointmentRepositoryProvider.overrideWithValue(
               _AppointmentRepository(),
+            ),
+            announcementPreferenceServiceProvider.overrideWithValue(
+              preferences,
             ),
           ],
           child: MaterialApp.router(routerConfig: router),
@@ -83,6 +106,13 @@ void main() {
         find.text('Lo studio resterà chiuso dal 10 al 20 agosto.'),
         findsOneWidget,
       );
+      expect(find.text('Non mostrare più questo avviso'), findsOneWidget);
+
+      await tester.tap(find.text('Non mostrare più questo avviso'));
+      await tester.pumpAndSettle();
+
+      expect(preferences.dismissedAnnouncementId, 'ferie-2026');
+      expect(find.text('Chiusura estiva'), findsNothing);
     },
   );
 }

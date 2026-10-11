@@ -3,6 +3,8 @@ enum AppointmentStatus {
   counterProposed('COUNTER_PROPOSED', 'Controproposta dello studio'),
   counterRejected('COUNTER_REJECTED', 'Proposta rifiutata'),
   confirmed('CONFIRMED', 'Confermato'),
+  cancellationRequested('CANCELLATION_REQUESTED', 'Annullamento richiesto'),
+  rescheduleRequested('RESCHEDULE_REQUESTED', 'Spostamento proposto'),
   rejected('REJECTED', 'Rifiutato'),
   cancelled('CANCELLED', 'Annullato'),
   completed('COMPLETED', 'Completato');
@@ -244,9 +246,16 @@ bool canTransition(AppointmentStatus from, AppointmentStatus to) {
       AppointmentStatus.cancelled,
     },
     AppointmentStatus.confirmed: {
+      AppointmentStatus.cancellationRequested,
+      AppointmentStatus.rescheduleRequested,
       AppointmentStatus.cancelled,
       AppointmentStatus.completed,
     },
+    AppointmentStatus.cancellationRequested: {
+      AppointmentStatus.confirmed,
+      AppointmentStatus.cancelled,
+    },
+    AppointmentStatus.rescheduleRequested: {AppointmentStatus.confirmed},
     AppointmentStatus.rejected: {},
     AppointmentStatus.cancelled: {},
     AppointmentStatus.completed: {},

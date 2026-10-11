@@ -20,7 +20,7 @@ class AppointmentsPage extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Annulla appuntamento'),
+        title: const Text('Richiedi annullamento'),
         content: const Text(
           'Puoi annullare fino a 24 ore prima. Oltre questo limite contatta '
           'direttamente lo studio.',
@@ -28,7 +28,7 @@ class AppointmentsPage extends ConsumerWidget {
         actions: [
           DialogActionRow(
             cancelLabel: 'Mantieni',
-            confirmLabel: 'Conferma annullamento',
+            confirmLabel: 'Invia richiesta',
             onCancel: () => Navigator.pop(context, false),
             onConfirm: () => Navigator.pop(context, true),
             destructive: true,
@@ -44,7 +44,7 @@ class AppointmentsPage extends ConsumerWidget {
       ref.invalidate(clientAppointmentsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appuntamento annullato.')),
+          const SnackBar(content: Text('Richiesta inviata allo studio.')),
         );
       }
     } catch (error) {
@@ -62,6 +62,42 @@ class AppointmentsPage extends ConsumerWidget {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _reschedule(
+    BuildContext context,
+    WidgetRef ref,
+    Appointment appointment,
+  ) async {
+    final initial = appointment.effectiveStartAt.toLocal();
+    final day = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (day == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null || !context.mounted) return;
+    final proposed = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      time.hour,
+      time.minute,
+    );
+    await ref
+        .read(appointmentRepositoryProvider)
+        .requestAppointmentReschedule(appointment.id, proposed);
+    ref.invalidate(clientAppointmentsProvider);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Proposta inviata allo studio.')),
+      );
     }
   }
 
@@ -128,15 +164,15 @@ class AppointmentsPage extends ConsumerWidget {
                           const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final item = items[index];
-                        final cancellable = !{
-                          AppointmentStatus.cancelled,
-                          AppointmentStatus.rejected,
-                          AppointmentStatus.completed,
-                        }.contains(item.status);
+                        final cancellable =
+                            item.status == AppointmentStatus.confirmed;
                         return AppointmentCard(
                           appointment: item,
                           onCancel: cancellable
                               ? () => _cancel(context, ref, item)
+                              : null,
+                          onReschedule: cancellable
+                              ? () => _reschedule(context, ref, item)
                               : null,
                           onAcceptProposal:
                               item.status == AppointmentStatus.counterProposed

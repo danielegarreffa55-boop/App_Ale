@@ -12,6 +12,8 @@ class AppointmentStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (status) {
       AppointmentStatus.confirmed => Colors.green,
+      AppointmentStatus.cancellationRequested => Colors.deepOrange,
+      AppointmentStatus.rescheduleRequested => Colors.purple,
       AppointmentStatus.pendingAdmin => Colors.orange,
       AppointmentStatus.counterProposed => Colors.indigo,
       AppointmentStatus.rejected ||
@@ -77,6 +79,7 @@ class AppointmentCard extends StatelessWidget {
     this.onAcceptProposal,
     this.onRejectProposal,
     this.onCancel,
+    this.onReschedule,
     this.trailing,
     super.key,
   });
@@ -85,6 +88,7 @@ class AppointmentCard extends StatelessWidget {
   final VoidCallback? onAcceptProposal;
   final VoidCallback? onRejectProposal;
   final VoidCallback? onCancel;
+  final VoidCallback? onReschedule;
   final Widget? trailing;
 
   @override
@@ -165,6 +169,15 @@ class AppointmentCard extends StatelessWidget {
                 ),
               ),
             ],
+            if (onReschedule != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onReschedule,
+                  icon: const Icon(Icons.edit_calendar_outlined),
+                  label: const Text('Proponi spostamento'),
+                ),
+              ),
           ],
         ),
       ),

@@ -83,7 +83,10 @@ class _AdminPageState extends ConsumerState<AdminPage> {
             onNavigate: (section, agendaDayOffset) =>
                 _selectSection(section, agendaDayOffset: agendaDayOffset),
           ),
-          1 => const _RequestsSection(),
+          1 => _RequestsSection(
+            onOpenAgenda: (offset) =>
+                _selectSection(2, agendaDayOffset: offset),
+          ),
           2 => _AgendaSection(
             key: ValueKey(_agendaInitialDayOffset),
             initialDayOffset: _agendaInitialDayOffset,
@@ -716,7 +719,9 @@ class _DashboardSection extends ConsumerWidget {
 }
 
 class _RequestsSection extends ConsumerWidget {
-  const _RequestsSection();
+  const _RequestsSection({required this.onOpenAgenda});
+
+  final void Function(int dayOffset) onOpenAgenda;
 
   Future<void> _run(
     BuildContext context,
@@ -801,7 +806,10 @@ class _RequestsSection extends ConsumerWidget {
                     (item) =>
                         item.status == AppointmentStatus.pendingAdmin ||
                         item.status == AppointmentStatus.counterProposed ||
-                        item.status == AppointmentStatus.counterRejected,
+                        item.status == AppointmentStatus.counterRejected ||
+                        item.status ==
+                            AppointmentStatus.cancellationRequested ||
+                        item.status == AppointmentStatus.rescheduleRequested,
                   )
                   .toList();
               if (requests.isEmpty) {
@@ -838,6 +846,13 @@ class _RequestsSection extends ConsumerWidget {
                           Text(
                             '${item.serviceName} · ${item.requestedStartAt.italianDateTime}',
                           ),
+                          if (item.status ==
+                                  AppointmentStatus.rescheduleRequested &&
+                              item.proposedStartAt != null)
+                            Text(
+                              'Nuova proposta: ${item.proposedStartAt!.italianDateTime}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                           if (conflictingBlock != null) ...[
                             const SizedBox(height: 14),
                             _BlockConflictWarning(block: conflictingBlock),
@@ -851,21 +866,87 @@ class _RequestsSection extends ConsumerWidget {
                           const SizedBox(height: 12),
                           AppointmentStatusChip(status: item.status),
                           const SizedBox(height: 16),
-                          AdminRequestActions(
-                            acceptEnabled:
-                                item.status == AppointmentStatus.pendingAdmin &&
-                                appointmentConflicts.isEmpty,
-                            onAccept: () => _run(
-                              context,
-                              ref,
-                              () => ref
-                                  .read(appointmentRepositoryProvider)
-                                  .adminAccept(item.id),
-                            ),
-                            onReject: () => _reject(context, ref, item),
-                            onCounterPropose: () =>
-                                _counter(context, ref, item),
+                          TextButton.icon(
+                            onPressed: () {
+                              final now = DateTime.now().inStudioTimezone;
+                              final agendaDate =
+                                  item.status ==
+                                          AppointmentStatus
+                                              .rescheduleRequested &&
+                                      item.proposedStartAt != null
+                                  ? item.proposedStartAt!
+                                  : item.effectiveStartAt;
+                              final date = agendaDate.inStudioTimezone;
+                              final today = DateTime(
+                                now.year,
+                                now.month,
+                                now.day,
+                              );
+                              final target = DateTime(
+                                date.year,
+                                date.month,
+                                date.day,
+                              );
+                              onOpenAgenda(target.difference(today).inDays);
+                            },
+                            icon: const Icon(Icons.calendar_month_outlined),
+                            label: const Text('Visualizza in agenda'),
                           ),
+                          if (item.status ==
+                                  AppointmentStatus.cancellationRequested ||
+                              item.status ==
+                                  AppointmentStatus.rescheduleRequested)
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: () => _run(
+                                    context,
+                                    ref,
+                                    () => ref
+                                        .read(appointmentRepositoryProvider)
+                                        .decideClientRequest(
+                                          item.id,
+                                          accept: true,
+                                        ),
+                                  ),
+                                  icon: const Icon(Icons.check),
+                                  label: const Text('Approva'),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => _run(
+                                    context,
+                                    ref,
+                                    () => ref
+                                        .read(appointmentRepositoryProvider)
+                                        .decideClientRequest(
+                                          item.id,
+                                          accept: false,
+                                        ),
+                                  ),
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('Rifiuta'),
+                                ),
+                              ],
+                            )
+                          else
+                            AdminRequestActions(
+                              acceptEnabled:
+                                  item.status ==
+                                      AppointmentStatus.pendingAdmin &&
+                                  appointmentConflicts.isEmpty,
+                              onAccept: () => _run(
+                                context,
+                                ref,
+                                () => ref
+                                    .read(appointmentRepositoryProvider)
+                                    .adminAccept(item.id),
+                              ),
+                              onReject: () => _reject(context, ref, item),
+                              onCounterPropose: () =>
+                                  _counter(context, ref, item),
+                            ),
                         ],
                       ),
                     ),

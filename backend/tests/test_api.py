@@ -42,7 +42,7 @@ def _registration() -> dict[str, Any]:
         "phone": "+393331234567",
         "password": "Correct-Horse-42!",
         "privacyAccepted": True,
-        "privacyPolicyVersion": "2026-10-11",
+        "privacyPolicyVersion": "2026-10-11-v2",
     }
 
 
@@ -228,6 +228,14 @@ def test_only_owner_can_publish_client_announcement(
     assert announcement["title"] == "Ferie"
     assert announcement["active"] is True
 
+    visible_to_client = client.get("/v1/studio-config", headers=_authorization(session))
+    assert visible_to_client.status_code == 200
+    returned = visible_to_client.json()["config"]["announcement"]
+    assert returned["id"] == announcement["id"]
+    assert returned["title"] == payload["title"]
+    assert returned["message"] == payload["message"]
+    assert returned["active"] is True
+
 
 def test_duplicate_email_and_wrong_password_are_rejected(
     client: TestClient, db: Any
@@ -363,6 +371,68 @@ def test_daily_agenda_includes_pending_requests(client: TestClient, db: Any) -> 
     assert items[0]["id"] == created.json()["appointmentId"]
     assert items[0]["status"] == "PENDING_ADMIN"
     assert items[0]["clientId"] == user_id
+
+
+def test_client_cancellation_and_reschedule_require_admin_approval(
+    client: TestClient, db: Any
+) -> None:
+    _seed_booking_data(db)
+    customer = _register(client, "booking-client@example.it")
+    manager = _register(client, "booking-manager@example.it")
+    db.users.update_many({}, {"$set": {"emailVerified": True}})
+    db.users.update_one({"_id": manager["user"]["id"]}, {"$set": {"role": "manager"}})
+    start = _open_start()
+    created = client.post(
+        "/v1/appointments",
+        json={"serviceId": "taglio", "requestedStartAt": start.isoformat()},
+        headers=_authorization(customer),
+    )
+    appointment_id = created.json()["appointmentId"]
+    accepted = client.post(
+        f"/v1/admin/appointments/{appointment_id}/accept",
+        headers=_authorization(manager),
+    )
+
+    cancellation = client.post(
+        f"/v1/appointments/{appointment_id}/cancel",
+        headers=_authorization(customer),
+    )
+    assert created.status_code == 201
+    assert accepted.status_code == 200
+    assert cancellation.status_code == 200
+    assert db.appointments.find_one({"_id": appointment_id})["status"] == (
+        "CANCELLATION_REQUESTED"
+    )
+    assert db.appointment_locks.find_one({"holderId": appointment_id}) is not None
+
+    rejected = client.post(
+        f"/v1/admin/appointments/{appointment_id}/client-request-decision",
+        json={"accept": False},
+        headers=_authorization(manager),
+    )
+    assert rejected.status_code == 200
+    assert db.appointments.find_one({"_id": appointment_id})["status"] == "CONFIRMED"
+
+    proposed_start = start + timedelta(hours=2)
+    reschedule = client.post(
+        f"/v1/appointments/{appointment_id}/reschedule-request",
+        json={"proposedStartAt": proposed_start.isoformat()},
+        headers=_authorization(customer),
+    )
+    proposed = db.appointments.find_one({"_id": appointment_id})
+    assert reschedule.status_code == 200
+    assert proposed["status"] == "RESCHEDULE_REQUESTED"
+    assert proposed["proposedStartAt"] == proposed_start.astimezone(ZoneInfo("UTC"))
+
+    approved = client.post(
+        f"/v1/admin/appointments/{appointment_id}/client-request-decision",
+        json={"accept": True},
+        headers=_authorization(manager),
+    )
+    updated = db.appointments.find_one({"_id": appointment_id})
+    assert approved.status_code == 200
+    assert updated["status"] == "CONFIRMED"
+    assert updated["confirmedStartAt"] == proposed_start.astimezone(ZoneInfo("UTC"))
 
 
 def test_unverified_email_cannot_create_appointment(

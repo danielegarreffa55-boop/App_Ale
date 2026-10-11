@@ -387,6 +387,93 @@ def cancel(
     return {**appointment, "status": "CANCELLED"}
 
 
+def client_request_cancellation(
+    db: Database[dict[str, Any]], user_id: str, appointment_id: str
+) -> Appointment:
+    appointment = db.appointments.find_one({"_id": appointment_id})
+    if not appointment or appointment.get("clientId") != user_id:
+        raise forbidden("NOT_OWNER")
+    if appointment.get("status") != "CONFIRMED":
+        raise failed_precondition("INVALID_TRANSITION")
+    changes = {"status": "CANCELLATION_REQUESTED", "updatedAt": utc_now()}
+    db.appointments.update_one(
+        {"_id": appointment_id, "status": "CONFIRMED"},
+        {
+            "$set": changes,
+            "$push": {
+                "history": _history("CONFIRMED", "CANCELLATION_REQUESTED", user_id)
+            },
+        },
+    )
+    return {**appointment, **changes}
+
+
+def client_request_reschedule(
+    db: Database[dict[str, Any]], user_id: str, appointment_id: str, start_at: datetime
+) -> Appointment:
+    appointment = db.appointments.find_one({"_id": appointment_id})
+    if not appointment or appointment.get("clientId") != user_id:
+        raise forbidden("NOT_OWNER")
+    if appointment.get("status") != "CONFIRMED":
+        raise failed_precondition("INVALID_TRANSITION")
+    proposed_start = aware_utc(start_at)
+    proposed_end = proposed_start + timedelta(
+        minutes=int(appointment["durationMinutes"])
+    )
+    ensure_within_opening_hours(proposed_start, proposed_end, _config(db))
+    changes = {
+        "status": "RESCHEDULE_REQUESTED",
+        "proposedStartAt": proposed_start,
+        "proposedEndAt": proposed_end,
+        "updatedAt": utc_now(),
+    }
+    db.appointments.update_one(
+        {"_id": appointment_id, "status": "CONFIRMED"},
+        {
+            "$set": changes,
+            "$push": {
+                "history": _history("CONFIRMED", "RESCHEDULE_REQUESTED", user_id)
+            },
+        },
+    )
+    return {**appointment, **changes}
+
+
+def admin_decide_client_request(
+    db: Database[dict[str, Any]],
+    user: dict[str, Any],
+    appointment_id: str,
+    accept: bool,
+) -> Appointment:
+    appointment = db.appointments.find_one({"_id": appointment_id})
+    if not appointment or appointment.get("status") not in {
+        "CANCELLATION_REQUESTED",
+        "RESCHEDULE_REQUESTED",
+    }:
+        raise failed_precondition("INVALID_TRANSITION")
+    status = appointment["status"]
+    if status == "CANCELLATION_REQUESTED" and accept:
+        db.appointments.update_one(
+            {"_id": appointment_id}, {"$set": {"status": "CONFIRMED"}}
+        )
+        return cancel(db, user, appointment_id)
+    if status == "RESCHEDULE_REQUESTED" and accept:
+        proposed = appointment.get("proposedStartAt")
+        db.appointments.update_one(
+            {"_id": appointment_id}, {"$set": {"status": "CONFIRMED"}}
+        )
+        return admin_reschedule(db, str(user["_id"]), appointment_id, proposed)
+    changes = {"status": "CONFIRMED", "updatedAt": utc_now()}
+    db.appointments.update_one(
+        {"_id": appointment_id, "status": status},
+        {
+            "$set": changes,
+            "$push": {"history": _history(status, "CONFIRMED", str(user["_id"]))},
+        },
+    )
+    return {**appointment, **changes}
+
+
 def admin_complete(
     db: Database[dict[str, Any]], user_id: str, appointment_id: str
 ) -> Appointment:

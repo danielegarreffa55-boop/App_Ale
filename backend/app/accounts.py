@@ -42,7 +42,7 @@ def register(db: Database[dict[str, Any]], data: dict[str, Any]) -> dict[str, An
         "emailVerified": False,
         "emailVerificationRequired": True,
         "privacyAcceptedAt": now,
-        "privacyPolicyVersion": data.get("privacyPolicyVersion", "2026-10-11"),
+        "privacyPolicyVersion": data.get("privacyPolicyVersion", "2026-10-11-v2"),
         "sessionVersion": 0,
         "createdAt": now,
         "updatedAt": now,

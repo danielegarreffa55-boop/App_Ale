@@ -28,12 +28,14 @@ from .models import (
     BlockInput,
     CounterProposalInput,
     CounterResponseInput,
+    ClientRescheduleInput,
     ForgotPasswordInput,
     LoginInput,
     ManualAppointmentInput,
     ProfileInput,
     RefreshInput,
     RegisterInput,
+    RequestDecisionInput,
     RejectInput,
     ResetPasswordInput,
     RescheduleInput,
@@ -52,6 +54,17 @@ logger = logging.getLogger(__name__)
 async def lifespan(_app: FastAPI):
     mongo_client().admin.command("ping")
     ensure_indexes()
+    database().studio.update_one(
+        {"_id": "config"},
+        {
+            "$set": {
+                "supportEmail": "alessiogarreffa995@gmail.com",
+                "supportPhone": "+39 388 986 5985",
+                "address": "Via Cottolengo, 44, 10048 Vinovo TO",
+            }
+        },
+        upsert=True,
+    )
     yield
     mongo_client().close()
 
@@ -448,10 +461,10 @@ def cancel_appointment(
     appointment_id: str, user: Annotated[User, Depends(verified_user)]
 ) -> dict[str, bool]:
     db = database()
-    appointment = appointments.cancel(db, user, appointment_id)
-    if appointment.get("confirmedStartAt"):
-        calendar_sync.delete_event(db, appointment_id, appointment)
     if user.get("role") in {"manager", "owner"}:
+        appointment = appointments.cancel(db, user, appointment_id)
+        if appointment.get("confirmedStartAt"):
+            calendar_sync.delete_event(db, appointment_id, appointment)
         notifications.send_to_user(
             db,
             appointment.get("clientId", ""),
@@ -461,13 +474,64 @@ def cancel_appointment(
             {"type": "cancelled", "appointmentId": appointment_id},
         )
     else:
+        appointment = appointments.client_request_cancellation(
+            db, str(user["_id"]), appointment_id
+        )
         notifications.send_to_admins(
             db,
-            f"cancelled_{appointment_id}",
-            "Appuntamento annullato",
-            "Il cliente ha annullato l'appuntamento.",
-            {"type": "cancelled", "appointmentId": appointment_id},
+            f"cancellation_requested_{appointment_id}",
+            "Richiesta di annullamento",
+            "Un cliente ha chiesto di annullare un appuntamento.",
+            {"type": "cancellation_requested", "appointmentId": appointment_id},
         )
+    return {"ok": True}
+
+
+@app.post("/v1/appointments/{appointment_id}/reschedule-request")
+def request_reschedule(
+    appointment_id: str,
+    body: ClientRescheduleInput,
+    user: Annotated[User, Depends(verified_user)],
+) -> dict[str, bool]:
+    db = database()
+    appointments.client_request_reschedule(
+        db, str(user["_id"]), appointment_id, body.proposedStartAt
+    )
+    notifications.send_to_admins(
+        db,
+        f"reschedule_requested_{appointment_id}_{int(body.proposedStartAt.timestamp())}",
+        "Proposta di spostamento",
+        "Un cliente ha proposto un nuovo orario per l'appuntamento.",
+        {"type": "reschedule_requested", "appointmentId": appointment_id},
+    )
+    return {"ok": True}
+
+
+@app.post("/v1/admin/appointments/{appointment_id}/client-request-decision")
+def decide_client_request(
+    appointment_id: str,
+    body: RequestDecisionInput,
+    user: Annotated[User, Depends(admin_user)],
+) -> dict[str, bool]:
+    db = database()
+    previous = db.appointments.find_one({"_id": appointment_id}) or {}
+    appointment = appointments.admin_decide_client_request(
+        db, user, appointment_id, body.accept
+    )
+    if body.accept and previous.get("status") == "CANCELLATION_REQUESTED":
+        calendar_sync.delete_event(db, appointment_id, appointment)
+    elif body.accept and previous.get("status") == "RESCHEDULE_REQUESTED":
+        calendar_sync.sync_event(db, appointment_id, appointment)
+    notifications.send_to_user(
+        db,
+        appointment.get("clientId", ""),
+        f"client_request_decision_{appointment_id}_{body.accept}",
+        "Richiesta aggiornata",
+        "La tua richiesta è stata accettata."
+        if body.accept
+        else "La tua richiesta non è stata accettata.",
+        {"type": "client_request_decision", "appointmentId": appointment_id},
+    )
     return {"ok": True}
 
 

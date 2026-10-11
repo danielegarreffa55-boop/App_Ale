@@ -7,14 +7,17 @@ abstract final class AppConfig {
     'APP_NAME',
     defaultValue: 'Alessio Garreffa Hair',
   );
-  static const supportEmail = String.fromEnvironment('SUPPORT_EMAIL');
+  static const supportEmail = String.fromEnvironment(
+    'SUPPORT_EMAIL',
+    defaultValue: 'alessiogarreffa995@gmail.com',
+  );
   static const supportPhone = String.fromEnvironment(
     'SUPPORT_PHONE',
-    defaultValue: '+39 342 535 5594',
+    defaultValue: '+39 388 986 5985',
   );
   static const address = String.fromEnvironment(
     'ADDRESS',
-    defaultValue: 'Via Cottolengo 44, 10048 Vinovo TO',
+    defaultValue: 'Via Cottolengo, 44, 10048 Vinovo TO',
   );
   static const timezone = String.fromEnvironment(
     'TIMEZONE',
