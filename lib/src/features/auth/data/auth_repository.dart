@@ -16,6 +16,7 @@ class AuthUser {
     required this.phone,
     required this.role,
     required this.emailVerified,
+    required this.emailVerificationRequired,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> data) => AuthUser(
@@ -26,6 +27,8 @@ class AuthUser {
     phone: data['phone'] as String? ?? '',
     role: data['role'] as String? ?? 'client',
     emailVerified: data['emailVerified'] as bool? ?? false,
+    emailVerificationRequired:
+        data['emailVerificationRequired'] as bool? ?? false,
   );
 
   final String uid;
@@ -35,6 +38,7 @@ class AuthUser {
   final String phone;
   final String role;
   final bool emailVerified;
+  final bool emailVerificationRequired;
 
   String get displayName => '$firstName $lastName'.trim();
   bool get isAdmin => role == 'manager' || role == 'owner';

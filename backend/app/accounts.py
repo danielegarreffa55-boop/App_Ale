@@ -23,6 +23,7 @@ def public_user(user: dict[str, Any]) -> dict[str, Any]:
         "phone": user.get("phone", ""),
         "role": user.get("role", "client"),
         "emailVerified": user.get("emailVerified") is True,
+        "emailVerificationRequired": user.get("emailVerificationRequired") is True,
         "createdAt": user.get("createdAt"),
     }
 
@@ -39,6 +40,7 @@ def register(db: Database[dict[str, Any]], data: dict[str, Any]) -> dict[str, An
         "passwordHash": auth.hash_password(data["password"]),
         "role": "client",
         "emailVerified": False,
+        "emailVerificationRequired": True,
         "privacyAcceptedAt": now,
         "privacyPolicyVersion": data.get("privacyPolicyVersion", "2026-10-11"),
         "sessionVersion": 0,

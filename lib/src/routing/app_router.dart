@@ -23,7 +23,10 @@ GoRouter createAppRouter(bool backendReady, AuthRepository authRepository) {
       }
       if (state.matchedLocation == '/setup') return '/';
       final signedIn = authRepository.currentUser != null;
-      final verified = authRepository.currentUser?.emailVerified == true;
+      final user = authRepository.currentUser;
+      final verified =
+          user != null &&
+          (!user.emailVerificationRequired || user.emailVerified);
       final publicRoute = {
         '/',
         '/verify-email',

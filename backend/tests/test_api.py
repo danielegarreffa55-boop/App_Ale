@@ -133,6 +133,7 @@ def test_register_login_refresh_and_me(client: TestClient, db: Any) -> None:
     assert registered.status_code == 201
     assert registered.json()["user"]["role"] == "client"
     assert registered.json()["user"]["emailVerified"] is False
+    assert registered.json()["user"]["emailVerificationRequired"] is True
 
     logged_in = client.post(
         "/v1/auth/login",
@@ -184,6 +185,21 @@ def test_unverified_user_is_blocked_until_email_verification(
 
     assert verified.status_code == 200
     assert verified.json()["user"]["emailVerified"] is True
+    assert allowed.status_code == 200
+
+
+def test_legacy_user_without_verification_marker_remains_allowed(
+    client: TestClient, db: Any
+) -> None:
+    _seed_booking_data(db)
+    session = _register(client, "legacy@example.it")
+    db.users.update_one(
+        {"_id": session["user"]["id"]},
+        {"$unset": {"emailVerificationRequired": ""}},
+    )
+
+    allowed = client.get("/v1/services", headers=_authorization(session))
+
     assert allowed.status_code == 200
 
 

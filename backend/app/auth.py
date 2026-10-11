@@ -209,7 +209,12 @@ def current_user(authorization: Annotated[str | None, Header()] = None) -> User:
 
 
 def verified_user(user: Annotated[User, Depends(current_user)]) -> User:
-    if user.get("emailVerified") is not True:
+    # The requirement marker is deliberately opt-in so accounts created before
+    # email verification was introduced are not locked out during the rollout.
+    if (
+        user.get("emailVerificationRequired") is True
+        and user.get("emailVerified") is not True
+    ):
         raise forbidden("EMAIL_NOT_VERIFIED")
     return user
 
