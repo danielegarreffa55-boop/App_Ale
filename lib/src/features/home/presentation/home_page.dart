@@ -8,94 +8,11 @@ import '../../../shared/appointment_card.dart';
 import '../../../shared/async_value_view.dart';
 import '../../appointments/domain/appointment_models.dart';
 
-class HomePage extends ConsumerStatefulWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  ConsumerState<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends ConsumerState<HomePage> {
-  var _startupDialogsHandled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showStartupDialogs());
-  }
-
-  Future<void> _showStartupDialogs() async {
-    if (_startupDialogsHandled || !mounted) return;
-    _startupDialogsHandled = true;
-    final user = ref.read(authRepositoryProvider).currentUser;
-    if (user == null) return;
-    final notifications = ref.read(notificationServiceProvider);
-    final alreadyAsked = await notifications.firstPromptWasShown(user.uid);
-    final enabled = await notifications.permissionEnabled();
-    if (!alreadyAsked && enabled != true && mounted) {
-      final activate = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          icon: const Icon(Icons.notifications_active_outlined),
-          title: const Text('Vuoi attivare le notifiche?'),
-          content: const Text(
-            'Riceverai conferme, controproposte e promemoria degli appuntamenti. '
-            'Potrai abilitarle o disabilitarle in qualsiasi momento dalla sezione Profilo.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Non ora'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Attiva'),
-            ),
-          ],
-        ),
-      );
-      await notifications.markFirstPromptShown(user.uid);
-      if (activate == true) {
-        await notifications.requestAndRegister(userId: user.uid);
-      }
-    } else if (!alreadyAsked) {
-      await notifications.markFirstPromptShown(user.uid);
-    }
-
-    if (!mounted) return;
-    try {
-      final config = await ref.read(studioConfigProvider.future);
-      final raw = config['announcement'];
-      if (raw is! Map) return;
-      final announcement = Map<String, dynamic>.from(raw);
-      final title = (announcement['title'] as String? ?? '').trim();
-      final message = (announcement['message'] as String? ?? '').trim();
-      if (announcement['active'] != true || title.isEmpty || message.isEmpty) {
-        return;
-      }
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          icon: const Icon(Icons.campaign_outlined),
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Ho capito'),
-            ),
-          ],
-        ),
-      );
-    } catch (_) {
-      // La home rimane utilizzabile anche se l'avviso non è disponibile.
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(clientAppointmentsProvider);
     final user = ref.watch(authStateProvider).value;
     final displayName = user?.displayName;

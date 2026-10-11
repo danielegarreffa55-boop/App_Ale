@@ -74,9 +74,13 @@ class AppointmentRepository {
   );
 
   Stream<Map<String, dynamic>> watchStudioConfig() => _poll(() async {
+    return fetchStudioConfig();
+  });
+
+  Future<Map<String, dynamic>> fetchStudioConfig() async {
     final response = await _api.get('/v1/studio-config');
     return Map<String, dynamic>.from(response['config']! as Map);
-  });
+  }
 
   Stream<List<Map<String, dynamic>>> watchClients() =>
       _poll(() async => _items(await _api.get('/v1/admin/users')));

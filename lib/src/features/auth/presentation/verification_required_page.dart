@@ -81,14 +81,18 @@ class _VerificationRequiredPageState
                       const SizedBox(height: 28),
                       const Icon(Icons.mark_email_unread_outlined, size: 52),
                       const SizedBox(height: 16),
-                      Text(
-                        'Verifica la tua email',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Verifica la tua email',
+                          maxLines: 1,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Abbiamo inviato un link a $email. Aprilo per attivare '
-                        'l’account. Fino alla verifica non è possibile consultare '
+                        'Abbiamo inviato un link a $email.\n'
+                        'Aprilo per attivare l’account, fino alla verifica non è possibile consultare '
                         'servizi, appuntamenti o effettuare prenotazioni.',
                         textAlign: TextAlign.center,
                       ),

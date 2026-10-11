@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/l10n/app_strings.dart';
+import '../providers.dart';
 import 'brand_logo.dart';
 
-class ClientShell extends StatelessWidget {
+class ClientShell extends ConsumerStatefulWidget {
   const ClientShell({required this.child, super.key});
 
   final Widget child;
+
+  @override
+  ConsumerState<ClientShell> createState() => _ClientShellState();
+}
+
+class _ClientShellState extends ConsumerState<ClientShell> {
+  var _startupDialogsHandled = false;
 
   static const _paths = ['/home', '/book', '/appointments', '/profile'];
   static const _destinations = [
@@ -30,7 +39,93 @@ class ClientShell extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showStartupDialogs());
+  }
+
+  Future<void> _showStartupDialogs() async {
+    if (_startupDialogsHandled || !mounted) return;
+    final user = ref.read(authRepositoryProvider).currentUser;
+    if (user == null) return;
+    _startupDialogsHandled = true;
+
+    final notifications = ref.read(notificationServiceProvider);
+    final alreadyAsked = await notifications.firstPromptWasShown(user.uid);
+    final enabled = await notifications.permissionEnabled();
+    if (!alreadyAsked && enabled != true && mounted) {
+      final activate = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.notifications_active_outlined),
+          title: const Text('Vuoi attivare le notifiche?'),
+          content: const Text(
+            'Riceverai conferme, controproposte e promemoria degli appuntamenti. '
+            'Potrai abilitarle o disabilitarle in qualsiasi momento dalla sezione Profilo.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Non ora'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Attiva'),
+            ),
+          ],
+        ),
+      );
+      await notifications.markFirstPromptShown(user.uid);
+      if (activate == true) {
+        await notifications.requestAndRegister(userId: user.uid);
+      }
+    } else if (!alreadyAsked) {
+      await notifications.markFirstPromptShown(user.uid);
+    }
+
+    if (!mounted) return;
+    try {
+      final config = await ref
+          .read(appointmentRepositoryProvider)
+          .fetchStudioConfig();
+      final raw = config['announcement'];
+      if (raw is! Map) return;
+      final announcement = Map<String, dynamic>.from(raw);
+      final title = (announcement['title'] as String? ?? '').trim();
+      final message = (announcement['message'] as String? ?? '').trim();
+      if (announcement['active'] != true || title.isEmpty || message.isEmpty) {
+        return;
+      }
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.campaign_outlined),
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Ho capito'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      // Il resto dell'app rimane utilizzabile se l'avviso non è disponibile.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen(authStateProvider, (_, next) {
+      if (next.value != null && !_startupDialogsHandled) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showStartupDialogs(),
+        );
+      }
+    });
     final location = GoRouterState.of(context).uri.path;
     final selected = _paths.indexWhere(location.startsWith).clamp(0, 3);
     final wide = MediaQuery.sizeOf(context).width >= 900;
@@ -53,14 +148,14 @@ class ClientShell extends StatelessWidget {
                   .toList(),
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: child),
+            Expanded(child: widget.child),
           ],
         ),
       );
     }
     return Scaffold(
       appBar: AppBar(title: const BrandWordmark()),
-      body: child,
+      body: widget.child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selected,
         onDestinationSelected: (index) => context.go(_paths[index]),
