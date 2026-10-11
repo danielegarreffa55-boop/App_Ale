@@ -15,21 +15,39 @@ class ProfilePage extends ConsumerStatefulWidget {
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   var _notificationBusy = false;
+  bool? _notificationsEnabled;
 
-  Future<void> _enableNotifications() async {
+  @override
+  void initState() {
+    super.initState();
+    _refreshNotificationState();
+  }
+
+  Future<void> _refreshNotificationState() async {
+    final enabled = await ref
+        .read(notificationServiceProvider)
+        .permissionEnabled();
+    if (mounted) setState(() => _notificationsEnabled = enabled);
+  }
+
+  Future<void> _toggleNotifications() async {
     setState(() => _notificationBusy = true);
     try {
       final service = ref.read(notificationServiceProvider);
-      final enabled = await service.requestAndRegister(
-        userId: ref.read(authRepositoryProvider).currentUser?.uid,
-      );
+      final enabled = _notificationsEnabled == true
+          ? false
+          : await service.requestAndRegister(
+              userId: ref.read(authRepositoryProvider).currentUser?.uid,
+            );
+      if (_notificationsEnabled == true) await service.disable();
       if (mounted) {
+        setState(() => _notificationsEnabled = enabled);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               enabled
                   ? 'Notifiche abilitate su questo dispositivo.'
-                  : 'Permesso notifiche non concesso.',
+                  : 'Notifiche disabilitate su questo dispositivo.',
             ),
           ),
         );
@@ -117,9 +135,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         trailing: FilledButton.tonal(
                           onPressed: _notificationBusy
                               ? null
-                              : _enableNotifications,
+                              : _toggleNotifications,
                           child: Text(
-                            _notificationBusy ? 'Attendi…' : 'Abilita',
+                            _notificationBusy
+                                ? 'Attendi…'
+                                : _notificationsEnabled == true
+                                ? 'Disabilita'
+                                : 'Abilita',
                           ),
                         ),
                       ),
@@ -144,12 +166,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         leading: const Icon(Icons.privacy_tip_outlined),
                         title: const Text('Privacy Policy'),
                         subtitle: const Text(
-                          'Testo da pubblicare prima della release',
+                          'Consulta finalità, fornitori, conservazione e diritti.',
                         ),
-                        onTap: () => showLicensePage(
-                          context: context,
-                          applicationName: AppConfig.appName,
-                        ),
+                        onTap: () => context.push('/privacy'),
                       ),
                     ],
                   ),

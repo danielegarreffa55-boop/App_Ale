@@ -40,6 +40,7 @@ def register(db: Database[dict[str, Any]], data: dict[str, Any]) -> dict[str, An
         "role": "client",
         "emailVerified": False,
         "privacyAcceptedAt": now,
+        "privacyPolicyVersion": data.get("privacyPolicyVersion", "2026-10-11"),
         "sessionVersion": 0,
         "createdAt": now,
         "updatedAt": now,

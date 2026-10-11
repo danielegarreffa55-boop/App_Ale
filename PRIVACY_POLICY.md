@@ -1,6 +1,6 @@
 # Informativa sulla privacy — Alessio Garreffa Hair
 
-Ultimo aggiornamento: 8 ottobre 2026
+Ultimo aggiornamento: 11 ottobre 2026
 
 Questa informativa descrive il trattamento dei dati personali effettuato tramite l'app **Alessio Garreffa Hair**.
 
@@ -38,7 +38,7 @@ Il trattamento è basato sull'esecuzione del servizio richiesto dall'utente, sul
 
 ## Fornitori e destinatari
 
-I dati possono essere trattati, nei limiti necessari, da fornitori tecnici utilizzati per l'erogazione del servizio, tra cui servizi di hosting e database, invio email, calendario e notifiche. Tali soggetti operano come fornitori o responsabili del trattamento secondo i rispettivi accordi e termini applicabili. I dati non vengono venduti.
+I dati possono essere trattati, nei limiti necessari, dai fornitori tecnici utilizzati per l'erogazione del servizio: **FastAPI Cloud** per l'hosting del backend, **MongoDB Atlas** per il database, **Brevo** per l'invio email, **OneSignal** per le notifiche push, i servizi **Apple** e **Google** per distribuzione e notifiche di piattaforma e, quando configurato, **Google Calendar** per la sincronizzazione dell'agenda. Tali soggetti operano come fornitori o responsabili del trattamento secondo i rispettivi accordi e termini applicabili. I dati non vengono venduti.
 
 ## Trasferimenti internazionali
 

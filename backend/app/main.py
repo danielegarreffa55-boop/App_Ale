@@ -18,12 +18,13 @@ from google.oauth2 import id_token as google_id_token
 from pymongo import ASCENDING, DESCENDING
 
 from . import accounts, appointments, auth, calendar_sync, mail, notifications
-from .auth import User, admin_user, current_user, owner_user
+from .auth import User, admin_user, current_user, owner_user, verified_user
 from .config import settings
 from .database import database, ensure_indexes, mongo_client, public_document
 from .errors import ApiError, api_error_handler, forbidden, not_found
 from .models import (
     AppointmentRequestInput,
+    AnnouncementInput,
     BlockInput,
     CounterProposalInput,
     CounterResponseInput,
@@ -307,7 +308,7 @@ def set_user_role(
 
 @app.get("/v1/services")
 def list_services(
-    user: Annotated[User, Depends(current_user)],
+    user: Annotated[User, Depends(verified_user)],
     include_inactive: Annotated[bool, Query(alias="includeInactive")] = False,
 ) -> dict[str, Any]:
     if include_inactive and user.get("role") not in {"manager", "owner"}:
@@ -318,14 +319,16 @@ def list_services(
 
 
 @app.get("/v1/studio-config")
-def studio_config(_user: Annotated[User, Depends(current_user)]) -> dict[str, Any]:
+def studio_config(_user: Annotated[User, Depends(verified_user)]) -> dict[str, Any]:
     document = database().studio.find_one({"_id": "config"}) or {}
     document.pop("_id", None)
     return {"config": document}
 
 
 @app.get("/v1/appointments")
-def client_appointments(user: Annotated[User, Depends(current_user)]) -> dict[str, Any]:
+def client_appointments(
+    user: Annotated[User, Depends(verified_user)],
+) -> dict[str, Any]:
     documents = (
         database()
         .appointments.find({"clientId": str(user["_id"])})
@@ -391,7 +394,7 @@ def admin_users(_user: Annotated[User, Depends(admin_user)]) -> dict[str, Any]:
 def get_availability(
     service_id: Annotated[str, Query(alias="serviceId", min_length=1, max_length=200)],
     day: Annotated[str, Query(alias="date", pattern=r"^\d{4}-\d{2}-\d{2}$")],
-    user: Annotated[User, Depends(current_user)],
+    user: Annotated[User, Depends(verified_user)],
 ) -> dict[str, Any]:
     return {
         "slots": appointments.availability(
@@ -402,7 +405,7 @@ def get_availability(
 
 @app.post("/v1/appointments", status_code=201)
 def create_appointment_request(
-    body: AppointmentRequestInput, user: Annotated[User, Depends(current_user)]
+    body: AppointmentRequestInput, user: Annotated[User, Depends(verified_user)]
 ) -> dict[str, str]:
     db = database()
     appointment_id = appointments.create_request(
@@ -422,7 +425,7 @@ def create_appointment_request(
 def counter_response(
     appointment_id: str,
     body: CounterResponseInput,
-    user: Annotated[User, Depends(current_user)],
+    user: Annotated[User, Depends(verified_user)],
 ) -> dict[str, Any]:
     db = database()
     status, appointment = appointments.client_counter_response(
@@ -442,7 +445,7 @@ def counter_response(
 
 @app.post("/v1/appointments/{appointment_id}/cancel")
 def cancel_appointment(
-    appointment_id: str, user: Annotated[User, Depends(current_user)]
+    appointment_id: str, user: Annotated[User, Depends(verified_user)]
 ) -> dict[str, bool]:
     db = database()
     appointment = appointments.cancel(db, user, appointment_id)
@@ -624,6 +627,27 @@ def update_studio_config(
     changes["updatedAt"] = utc_now()
     database().studio.update_one({"_id": "config"}, {"$set": changes}, upsert=True)
     return {"ok": True}
+
+
+@app.put("/v1/owner/announcement")
+def update_client_announcement(
+    body: AnnouncementInput, user: Annotated[User, Depends(owner_user)]
+) -> dict[str, Any]:
+    now = utc_now()
+    announcement = {
+        "id": str(uuid4()),
+        "title": body.title.strip(),
+        "message": body.message.strip(),
+        "active": body.active,
+        "updatedAt": now,
+        "updatedBy": str(user["_id"]),
+    }
+    database().studio.update_one(
+        {"_id": "config"},
+        {"$set": {"announcement": announcement, "updatedAt": now}},
+        upsert=True,
+    )
+    return {"ok": True, "announcement": announcement}
 
 
 @app.post("/internal/reminders")

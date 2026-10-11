@@ -108,6 +108,7 @@ class AuthRepository extends ChangeNotifier {
       'phone': phone.trim(),
       'password': password,
       'privacyAccepted': true,
+      'privacyPolicyVersion': '2026-10-11',
     });
     return _acceptSession(response);
   }

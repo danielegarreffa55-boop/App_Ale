@@ -16,6 +16,7 @@ import '../../../shared/dialog_action_row.dart';
 import '../../appointments/domain/appointment_models.dart';
 import 'admin_day_calendar.dart';
 import 'owner_roles_section.dart';
+import 'owner_announcement_section.dart';
 
 class AdminPage extends ConsumerStatefulWidget {
   const AdminPage({super.key});
@@ -66,9 +67,14 @@ class _AdminPageState extends ConsumerState<AdminPage> {
         final isOwner = ref.watch(isOwnerProvider).value ?? false;
         final width = MediaQuery.sizeOf(context).width;
         final wide = width >= 980;
-        final labels = [..._labels, if (isOwner) 'Staff e ruoli'];
+        final labels = [
+          ..._labels,
+          if (isOwner) 'Avviso clienti',
+          if (isOwner) 'Staff e ruoli',
+        ];
         final icons = [
           ..._icons,
+          if (isOwner) Icons.campaign_outlined,
           if (isOwner) Icons.admin_panel_settings_outlined,
         ];
         if (_selected >= labels.length) _selected = 0;
@@ -86,7 +92,8 @@ class _AdminPageState extends ConsumerState<AdminPage> {
           4 => const _ServicesSection(),
           5 => const _HoursSection(),
           6 => const _SettingsSection(),
-          7 when isOwner => const OwnerRolesSection(),
+          7 when isOwner => const OwnerAnnouncementSection(),
+          8 when isOwner => const OwnerRolesSection(),
           _ => _DashboardSection(
             onNavigate: (section, agendaDayOffset) =>
                 _selectSection(section, agendaDayOffset: agendaDayOffset),

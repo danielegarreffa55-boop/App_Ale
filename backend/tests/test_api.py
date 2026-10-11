@@ -20,11 +20,17 @@ def db(monkeypatch: pytest.MonkeyPatch) -> Any:
     ensure_indexes(target)
     monkeypatch.setattr(main, "database", lambda: target)
     monkeypatch.setattr(auth, "database", lambda: target)
+    fake_client = SimpleNamespace(
+        admin=SimpleNamespace(command=lambda _command: {"ok": 1}),
+        close=lambda: None,
+    )
+    monkeypatch.setattr(main, "mongo_client", lambda: fake_client)
+    monkeypatch.setattr(main, "ensure_indexes", lambda: ensure_indexes(target))
     return target
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(db: Any) -> TestClient:
     return TestClient(main.app)
 
 
@@ -36,6 +42,7 @@ def _registration() -> dict[str, Any]:
         "phone": "+393331234567",
         "password": "Correct-Horse-42!",
         "privacyAccepted": True,
+        "privacyPolicyVersion": "2026-10-11",
     }
 
 
@@ -153,6 +160,57 @@ def test_register_login_refresh_and_me(client: TestClient, db: Any) -> None:
         json={"refreshToken": refreshed.json()["refreshToken"]},
     )
     assert replay_revokes_family.status_code == 401
+
+
+def test_unverified_user_is_blocked_until_email_verification(
+    client: TestClient, db: Any
+) -> None:
+    _seed_booking_data(db)
+    session = _register(client, "verify-first@example.it")
+    headers = _authorization(session)
+
+    blocked = client.get("/v1/services", headers=headers)
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["message"] == "EMAIL_NOT_VERIFIED"
+
+    token = auth.create_opaque_token(
+        db,
+        session["user"]["id"],
+        "verify-email",
+        timedelta(hours=1),
+    )
+    verified = client.post("/v1/auth/verify-email", json={"token": token})
+    allowed = client.get("/v1/services", headers=headers)
+
+    assert verified.status_code == 200
+    assert verified.json()["user"]["emailVerified"] is True
+    assert allowed.status_code == 200
+
+
+def test_only_owner_can_publish_client_announcement(
+    client: TestClient, db: Any
+) -> None:
+    session = _register(client, "announcement@example.it")
+    user_id = session["user"]["id"]
+    db.users.update_one(
+        {"_id": user_id},
+        {"$set": {"emailVerified": True}},
+    )
+    payload = {"title": "Ferie", "message": "Chiuso dal 10 al 20.", "active": True}
+
+    forbidden_response = client.put(
+        "/v1/owner/announcement", json=payload, headers=_authorization(session)
+    )
+    assert forbidden_response.status_code == 403
+
+    db.users.update_one({"_id": user_id}, {"$set": {"role": "owner"}})
+    published = client.put(
+        "/v1/owner/announcement", json=payload, headers=_authorization(session)
+    )
+    assert published.status_code == 200
+    announcement = db.studio.find_one({"_id": "config"})["announcement"]
+    assert announcement["title"] == "Ferie"
+    assert announcement["active"] is True
 
 
 def test_duplicate_email_and_wrong_password_are_rejected(
@@ -291,7 +349,7 @@ def test_daily_agenda_includes_pending_requests(client: TestClient, db: Any) -> 
     assert items[0]["clientId"] == user_id
 
 
-def test_unverified_email_can_create_appointment_while_verification_is_disabled(
+def test_unverified_email_cannot_create_appointment(
     client: TestClient, db: Any
 ) -> None:
     _seed_booking_data(db)
@@ -304,8 +362,9 @@ def test_unverified_email_can_create_appointment_while_verification_is_disabled(
         },
         headers=_authorization(session),
     )
-    assert response.status_code == 201
-    assert db.appointments.find_one({"clientId": session["user"]["id"]}) is not None
+    assert response.status_code == 403
+    assert response.json()["error"]["message"] == "EMAIL_NOT_VERIFIED"
+    assert db.appointments.find_one({"clientId": session["user"]["id"]}) is None
 
 
 def test_email_verification_and_password_reset_are_single_use(

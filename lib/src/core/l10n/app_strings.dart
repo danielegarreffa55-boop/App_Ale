@@ -9,7 +9,7 @@ abstract final class AppStrings {
   static const phone = 'Telefono';
   static const forgotPassword = 'Password dimenticata?';
   static const privacyConsent =
-      'Ho letto e accetto l\u2019informativa privacy.';
+      'Dichiaro di aver letto l\u2019informativa privacy.';
   static const home = 'Home';
   static const book = 'Prenota';
   static const appointments = 'Appuntamenti';

@@ -170,6 +170,16 @@ class AppointmentRepository {
   Future<void> ownerSetUserRole({required String uid, required String role}) =>
       _api.put('/v1/owner/users/$uid/role', {'role': role});
 
+  Future<void> saveAnnouncement({
+    required String title,
+    required String message,
+    required bool active,
+  }) => _api.put('/v1/owner/announcement', {
+    'title': title.trim(),
+    'message': message.trim(),
+    'active': active,
+  });
+
   Future<void> saveService(SalonService service) async {
     final data = Map<String, Object?>.from(service.toJson());
     if (service.id.isEmpty) {

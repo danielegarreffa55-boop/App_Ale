@@ -25,6 +25,7 @@ class RegisterInput(StrictModel):
     phone: str = Field(min_length=5, max_length=30, pattern=r".*\S.*")
     password: str = Field(min_length=8, max_length=128)
     privacyAccepted: Literal[True]
+    privacyPolicyVersion: Literal["2026-10-11"] = "2026-10-11"
 
 
 class LoginInput(StrictModel):
@@ -186,3 +187,9 @@ class StudioConfigInput(StrictModel):
             except ZoneInfoNotFoundError as error:
                 raise ValueError("unknown timezone") from error
         return value
+
+
+class AnnouncementInput(StrictModel):
+    title: str = Field(min_length=1, max_length=100, pattern=r".*\S.*")
+    message: str = Field(min_length=1, max_length=1200, pattern=r".*\S.*")
+    active: bool = True

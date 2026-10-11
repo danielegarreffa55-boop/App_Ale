@@ -292,7 +292,25 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                   value: _privacy,
                                   onChanged: (value) =>
                                       setState(() => _privacy = value ?? false),
-                                  title: const Text(AppStrings.privacyConsent),
+                                  title: Wrap(
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      const Text('Dichiaro di aver letto l’'),
+                                      TextButton(
+                                        onPressed: () =>
+                                            context.push('/privacy'),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(0, 36),
+                                        ),
+                                        child: const Text(
+                                          'informativa privacy',
+                                        ),
+                                      ),
+                                      const Text('.'),
+                                    ],
+                                  ),
                                   controlAffinity:
                                       ListTileControlAffinity.leading,
                                 ),

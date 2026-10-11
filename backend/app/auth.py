@@ -208,13 +208,19 @@ def current_user(authorization: Annotated[str | None, Header()] = None) -> User:
     return user
 
 
-def admin_user(user: Annotated[User, Depends(current_user)]) -> User:
+def verified_user(user: Annotated[User, Depends(current_user)]) -> User:
+    if user.get("emailVerified") is not True:
+        raise forbidden("EMAIL_NOT_VERIFIED")
+    return user
+
+
+def admin_user(user: Annotated[User, Depends(verified_user)]) -> User:
     if user.get("role") not in {"manager", "owner"}:
         raise forbidden("ADMIN_REQUIRED")
     return user
 
 
-def owner_user(user: Annotated[User, Depends(current_user)]) -> User:
+def owner_user(user: Annotated[User, Depends(verified_user)]) -> User:
     if user.get("role") != "owner":
         raise forbidden("OWNER_REQUIRED")
     return user
