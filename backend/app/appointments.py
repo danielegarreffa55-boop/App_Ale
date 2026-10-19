@@ -87,9 +87,12 @@ def availability(
         start_at = datetime.fromisoformat(slot["startAt"].replace("Z", "+00:00"))
         end_at = datetime.fromisoformat(slot["endAt"].replace("Z", "+00:00"))
         lock_end = end_at + timedelta(minutes=int(service.get("bufferMinutes") or 0))
-        slot["available"] = db.appointment_locks.find_one(
-            {"_id": {"$in": lock_bucket_ids(start_at, lock_end)}}
-        ) is None
+        slot["available"] = (
+            db.appointment_locks.find_one(
+                {"_id": {"$in": lock_bucket_ids(start_at, lock_end)}}
+            )
+            is None
+        )
     return slots
 
 
