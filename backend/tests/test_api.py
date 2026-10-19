@@ -363,6 +363,36 @@ def test_agenda_block_warns_but_does_not_prevent_confirmation(
     assert accepted.status_code == 200
 
 
+def test_admin_can_create_appointment_for_unregistered_client(
+    client: TestClient, db: Any
+) -> None:
+    _seed_booking_data(db)
+    manager = _register(client, "walk-in-manager@example.it")
+    db.users.update_one(
+        {"_id": manager["user"]["id"]},
+        {"$set": {"role": "manager", "emailVerified": True}},
+    )
+
+    created = client.post(
+        "/v1/admin/appointments",
+        json={
+            "clientName": "  Giulia Bianchi  ",
+            "serviceId": "taglio",
+            "startAt": _open_start().isoformat(),
+        },
+        headers=_authorization(manager),
+    )
+
+    assert created.status_code == 201
+    appointment = db.appointments.find_one(
+        {"_id": created.json()["appointmentId"]}
+    )
+    assert appointment is not None
+    assert appointment["clientId"] is None
+    assert appointment["clientName"] == "Giulia Bianchi"
+    assert appointment["status"] == "CONFIRMED"
+
+
 def test_daily_agenda_includes_pending_requests(client: TestClient, db: Any) -> None:
     _seed_booking_data(db)
     session = _register(client, "manager-agenda@example.it")
@@ -394,6 +424,41 @@ def test_daily_agenda_includes_pending_requests(client: TestClient, db: Any) -> 
     assert items[0]["id"] == created.json()["appointmentId"]
     assert items[0]["status"] == "PENDING_ADMIN"
     assert items[0]["clientId"] == user_id
+
+
+def test_admin_message_is_visible_on_counter_proposal(
+    client: TestClient, db: Any
+) -> None:
+    _seed_booking_data(db)
+    customer = _register(client, "message-client@example.it")
+    manager = _register(client, "message-manager@example.it")
+    db.users.update_many({}, {"$set": {"emailVerified": True}})
+    db.users.update_one(
+        {"_id": manager["user"]["id"]}, {"$set": {"role": "manager"}}
+    )
+    start = _open_start()
+    created = client.post(
+        "/v1/appointments",
+        json={"serviceId": "taglio", "requestedStartAt": start.isoformat()},
+        headers=_authorization(customer),
+    )
+    appointment_id = created.json()["appointmentId"]
+
+    response = client.post(
+        f"/v1/admin/appointments/{appointment_id}/counter-proposal",
+        json={
+            "proposedStartAt": (start + timedelta(hours=1)).isoformat(),
+            "reason": "  Alle 10 sono già occupato.  ",
+        },
+        headers=_authorization(manager),
+    )
+    appointments = client.get(
+        "/v1/appointments", headers=_authorization(customer)
+    ).json()["items"]
+
+    assert response.status_code == 200
+    assert appointments[0]["status"] == "COUNTER_PROPOSED"
+    assert appointments[0]["adminReason"] == "Alle 10 sono già occupato."
 
 
 def test_client_cancellation_and_reschedule_require_admin_approval(

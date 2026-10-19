@@ -65,7 +65,6 @@ class HomePage extends ConsumerWidget {
                             .where(
                               (item) =>
                                   item.effectiveEndAt.isAfter(now) &&
-                                  item.status != AppointmentStatus.rejected &&
                                   item.status != AppointmentStatus.cancelled &&
                                   item.status !=
                                       AppointmentStatus.counterRejected,
@@ -77,23 +76,26 @@ class HomePage extends ConsumerWidget {
                             ),
                           );
                     if (upcoming.isEmpty) {
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(28),
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.event_available_outlined,
-                                size: 44,
-                              ),
-                              const SizedBox(height: 12),
-                              const Text('Nessun appuntamento in programma.'),
-                              const SizedBox(height: 16),
-                              FilledButton(
-                                onPressed: () => context.go('/book'),
-                                child: const Text('Scegli un servizio'),
-                              ),
-                            ],
+                      return SizedBox(
+                        width: double.infinity,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(28),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.event_available_outlined,
+                                  size: 44,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text('Nessun appuntamento in programma.'),
+                                const SizedBox(height: 16),
+                                FilledButton(
+                                  onPressed: () => context.go('/book'),
+                                  child: const Text('Scegli un servizio'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -105,7 +107,15 @@ class HomePage extends ConsumerWidget {
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.location_on_outlined),
-                    title: Text(AppConfig.address),
+                    title: FittedBox(
+                      alignment: Alignment.centerLeft,
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        AppConfig.address,
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
+                    ),
                     subtitle: Text(AppConfig.supportPhone),
                   ),
                 ),

@@ -279,12 +279,15 @@ def admin_reject(
     }
     if reason and reason.strip():
         changes["adminReason"] = reason.strip()
+    update: dict[str, Any] = {
+        "$set": changes,
+        "$push": {"history": _history(appointment["status"], "REJECTED", user_id)},
+    }
+    if "adminReason" not in changes:
+        update["$unset"] = {"adminReason": ""}
     db.appointments.update_one(
         {"_id": appointment_id, "status": appointment["status"]},
-        {
-            "$set": changes,
-            "$push": {"history": _history(appointment["status"], "REJECTED", user_id)},
-        },
+        update,
     )
     return {**appointment, **changes}
 
@@ -294,6 +297,7 @@ def admin_counter_propose(
     user_id: str,
     appointment_id: str,
     proposed_start_at: datetime,
+    reason: str | None,
 ) -> Appointment:
     appointment = db.appointments.find_one({"_id": appointment_id})
     if not appointment:
@@ -324,14 +328,19 @@ def admin_counter_propose(
         "counterProposedBy": user_id,
         "updatedAt": utc_now(),
     }
+    if reason and reason.strip():
+        changes["adminReason"] = reason.strip()
+    update: dict[str, Any] = {
+        "$set": changes,
+        "$push": {
+            "history": _history(appointment["status"], "COUNTER_PROPOSED", user_id)
+        },
+    }
+    if "adminReason" not in changes:
+        update["$unset"] = {"adminReason": ""}
     db.appointments.update_one(
         {"_id": appointment_id, "status": appointment["status"]},
-        {
-            "$set": changes,
-            "$push": {
-                "history": _history(appointment["status"], "COUNTER_PROPOSED", user_id)
-            },
-        },
+        update,
     )
     return {**appointment, **changes}
 
@@ -597,13 +606,20 @@ def admin_reschedule(
 def admin_create_appointment(
     db: Database[dict[str, Any]],
     user_id: str,
-    client_id: str,
+    client_id: str | None,
+    client_name: str | None,
     service_id: str,
     start_at: datetime,
 ) -> tuple[str, Appointment]:
-    client = db.users.find_one({"_id": client_id, "deletedAt": None})
+    client = (
+        db.users.find_one({"_id": client_id, "deletedAt": None})
+        if client_id is not None
+        else None
+    )
     service = db.services.find_one({"_id": service_id})
-    if not client or not service:
+    if client_id is not None and not client:
+        raise not_found("CLIENT_OR_SERVICE_NOT_FOUND")
+    if not service:
         raise not_found("CLIENT_OR_SERVICE_NOT_FOUND")
     start = aware_utc(start_at)
     duration = int(service["durationMinutes"])
@@ -616,9 +632,13 @@ def admin_create_appointment(
     appointment: Appointment = {
         "_id": appointment_id,
         "clientId": client_id,
-        "clientName": f"{client.get('firstName', '')} {client.get('lastName', '')}".strip()
+        "clientName": (
+            f"{client.get('firstName', '')} {client.get('lastName', '')}".strip()
+            if client is not None
+            else client_name
+        )
         or "Cliente",
-        "clientPhone": client.get("phone"),
+        "clientPhone": client.get("phone") if client is not None else None,
         "serviceId": service_id,
         "serviceName": service["name"],
         "durationMinutes": duration,

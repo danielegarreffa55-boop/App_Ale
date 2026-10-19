@@ -753,7 +753,7 @@ class _RequestsSection extends ConsumerWidget {
     final reason = await _textDialog(
       context,
       title: 'Rifiuta richiesta',
-      label: 'Motivo facoltativo',
+      label: 'Messaggio per il cliente (facoltativo)',
     );
     if (reason == null) return;
     if (!context.mounted) return;
@@ -774,12 +774,22 @@ class _RequestsSection extends ConsumerWidget {
     final date = await _pickDateTime(context, initial: item.requestedStartAt);
     if (date == null) return;
     if (!context.mounted) return;
+    final message = await _textDialog(
+      context,
+      title: 'Proponi un nuovo orario',
+      label: 'Messaggio per il cliente (facoltativo)',
+    );
+    if (message == null || !context.mounted) return;
     await _run(
       context,
       ref,
       () => ref
           .read(appointmentRepositoryProvider)
-          .adminCounterPropose(item.id, date),
+          .adminCounterPropose(
+            item.id,
+            date,
+            reason: message.isEmpty ? null : message,
+          ),
     );
   }
 
@@ -1113,15 +1123,17 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
     final clients = ref.read(clientsProvider).value ?? const [];
     final services = ref.read(adminServicesProvider).value ?? const [];
     final activeServices = services.where((service) => service.active).toList();
-    if (clients.isEmpty || activeServices.isEmpty) {
+    if (activeServices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Servono almeno un cliente e un servizio.'),
-        ),
+        const SnackBar(content: Text('Serve almeno un servizio attivo.')),
       );
       return;
     }
-    var clientId = clients.first['id']! as String;
+    const manualClientValue = '__manual_client__';
+    var clientSelection = clients.isEmpty
+        ? manualClientValue
+        : clients.first['id']! as String;
+    final clientNameController = TextEditingController();
     var serviceId = activeServices.first.id;
     DateTime? startAt = initialStartAt;
     final earliest = DateUtils.dateOnly(DateTime.now());
@@ -1161,20 +1173,38 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  initialValue: clientId,
+                  initialValue: clientSelection,
                   decoration: const InputDecoration(labelText: 'Cliente'),
-                  items: clients
-                      .map(
-                        (client) => DropdownMenuItem(
-                          value: client['id']! as String,
-                          child: Text(
-                            '${client['firstName'] ?? ''} ${client['lastName'] ?? ''}',
-                          ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: manualClientValue,
+                      child: Text('Cliente non registrato'),
+                    ),
+                    ...clients.map(
+                      (client) => DropdownMenuItem(
+                        value: client['id']! as String,
+                        child: Text(
+                          '${client['firstName'] ?? ''} ${client['lastName'] ?? ''}',
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) => clientId = value!,
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => clientSelection = value!),
                 ),
+                if (clientSelection == manualClientValue) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: clientNameController,
+                    autofocus: clients.isEmpty,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome cliente',
+                      hintText: 'Es. Mario Rossi',
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: serviceId,
@@ -1274,7 +1304,10 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
               cancelLabel: AppStrings.cancel,
               confirmLabel: 'Crea e conferma',
               onCancel: () => Navigator.pop(dialogContext, false),
-              onConfirm: startAt == null
+              onConfirm:
+                  startAt == null ||
+                      (clientSelection == manualClientValue &&
+                          clientNameController.text.trim().isEmpty)
                   ? null
                   : () => Navigator.pop(dialogContext, true),
             ),
@@ -1282,12 +1315,19 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
         ),
       ),
     );
+    final manualClientName = clientNameController.text.trim();
+    clientNameController.dispose();
     if (submitted != true || startAt == null) return;
     try {
       await ref
           .read(appointmentRepositoryProvider)
           .adminCreateAppointment(
-            clientId: clientId,
+            clientId: clientSelection == manualClientValue
+                ? null
+                : clientSelection,
+            clientName: clientSelection == manualClientValue
+                ? manualClientName
+                : null,
             serviceId: serviceId,
             startAt: startAt!,
           );

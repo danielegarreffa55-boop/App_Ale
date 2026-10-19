@@ -25,6 +25,7 @@ void main() {
       proposedStartAt: DateTime.utc(2026, 9, 1, 9),
       proposedEndAt: DateTime.utc(2026, 9, 1, 9, 30),
       createdAt: DateTime.utc(2026, 8, 31),
+      adminReason: 'Alle 10 sono già occupato.',
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -41,5 +42,9 @@ void main() {
     expect(find.text('Nuova proposta dello studio'), findsOneWidget);
     expect(find.text('Accetta proposta'), findsOneWidget);
     expect(find.text('Rifiuta proposta'), findsOneWidget);
+    expect(
+      find.text('Nota dello studio: Alle 10 sono già occupato.'),
+      findsOneWidget,
+    );
   });
 }

@@ -563,12 +563,17 @@ def reject_appointment(
     appointment = appointments.admin_reject(
         db, str(user["_id"]), appointment_id, body.reason
     )
+    notification_message = (
+        body.reason.strip()
+        if body.reason and body.reason.strip()
+        else "Lo studio non ha potuto confermare la richiesta."
+    )
     notifications.send_to_user(
         db,
         appointment["clientId"],
         f"rejected_{appointment_id}",
         "Richiesta non accettata",
-        "Lo studio non ha potuto confermare la richiesta.",
+        notification_message,
         {"type": "rejected", "appointmentId": appointment_id},
     )
     return {"ok": True}
@@ -582,14 +587,23 @@ def counter_proposal(
 ) -> dict[str, bool]:
     db = database()
     appointment = appointments.admin_counter_propose(
-        db, str(user["_id"]), appointment_id, body.proposedStartAt
+        db,
+        str(user["_id"]),
+        appointment_id,
+        body.proposedStartAt,
+        body.reason,
+    )
+    notification_message = (
+        body.reason.strip()
+        if body.reason and body.reason.strip()
+        else "Lo studio ti ha proposto un nuovo orario."
     )
     notifications.send_to_user(
         db,
         appointment["clientId"],
         f"counter_{appointment_id}_{int(body.proposedStartAt.timestamp())}",
         "Nuova proposta di orario",
-        "Lo studio ti ha proposto un nuovo orario.",
+        notification_message,
         {"type": "counter_proposal", "appointmentId": appointment_id},
     )
     return {"ok": True}
@@ -631,17 +645,23 @@ def create_manual_appointment(
 ) -> dict[str, str]:
     db = database()
     appointment_id, appointment = appointments.admin_create_appointment(
-        db, str(user["_id"]), body.clientId, body.serviceId, body.startAt
+        db,
+        str(user["_id"]),
+        body.clientId,
+        body.clientName,
+        body.serviceId,
+        body.startAt,
     )
     calendar_sync.sync_event(db, appointment_id, appointment)
-    notifications.send_to_user(
-        db,
-        appointment["clientId"],
-        f"manual_{appointment_id}",
-        "Nuovo appuntamento",
-        "Lo studio ha inserito un nuovo appuntamento.",
-        {"type": "confirmed", "appointmentId": appointment_id},
-    )
+    if appointment.get("clientId"):
+        notifications.send_to_user(
+            db,
+            appointment["clientId"],
+            f"manual_{appointment_id}",
+            "Nuovo appuntamento",
+            "Lo studio ha inserito un nuovo appuntamento.",
+            {"type": "confirmed", "appointmentId": appointment_id},
+        )
     return {"appointmentId": appointment_id}
 
 

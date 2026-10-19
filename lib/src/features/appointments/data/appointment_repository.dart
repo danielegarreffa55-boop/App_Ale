@@ -126,9 +126,11 @@ class AppointmentRepository {
 
   Future<void> adminCounterPropose(
     String appointmentId,
-    DateTime proposedStartAt,
-  ) => _api.post('/v1/admin/appointments/$appointmentId/counter-proposal', {
+    DateTime proposedStartAt, {
+    String? reason,
+  }) => _api.post('/v1/admin/appointments/$appointmentId/counter-proposal', {
     'proposedStartAt': proposedStartAt.toUtc().toIso8601String(),
+    'reason': ?reason,
   });
 
   Future<void> clientRespondToCounterProposal(
@@ -167,11 +169,13 @@ class AppointmentRepository {
   });
 
   Future<void> adminCreateAppointment({
-    required String clientId,
+    String? clientId,
+    String? clientName,
     required String serviceId,
     required DateTime startAt,
   }) => _api.post('/v1/admin/appointments', {
-    'clientId': clientId,
+    'clientId': ?clientId,
+    'clientName': ?clientName?.trim(),
     'serviceId': serviceId,
     'startAt': startAt.toUtc().toIso8601String(),
   });

@@ -67,6 +67,7 @@ class AppointmentRequestInput(StrictModel):
 
 class CounterProposalInput(StrictModel):
     proposedStartAt: datetime
+    reason: str | None = Field(default=None, max_length=500)
 
 
 class CounterResponseInput(StrictModel):
@@ -90,9 +91,20 @@ class RequestDecisionInput(StrictModel):
 
 
 class ManualAppointmentInput(StrictModel):
-    clientId: str = Field(min_length=1, max_length=200)
+    clientId: str | None = Field(default=None, min_length=1, max_length=200)
+    clientName: str | None = Field(default=None, min_length=1, max_length=160)
     serviceId: str = Field(min_length=1, max_length=200)
     startAt: datetime
+
+    @model_validator(mode="after")
+    def validate_client(self) -> "ManualAppointmentInput":
+        if self.clientName is not None:
+            self.clientName = self.clientName.strip()
+            if not self.clientName:
+                raise ValueError("clientName cannot be blank")
+        if (self.clientId is None) == (self.clientName is None):
+            raise ValueError("Provide either clientId or clientName")
+        return self
 
 
 class BlockInput(StrictModel):
