@@ -6,7 +6,6 @@ class DialogActionRow extends StatelessWidget {
     required this.confirmLabel,
     required this.onCancel,
     required this.onConfirm,
-    this.destructive = false,
     super.key,
   });
 
@@ -14,7 +13,6 @@ class DialogActionRow extends StatelessWidget {
   final String confirmLabel;
   final VoidCallback onCancel;
   final VoidCallback? onConfirm;
-  final bool destructive;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -31,11 +29,6 @@ class DialogActionRow extends StatelessWidget {
         Expanded(
           child: FilledButton(
             onPressed: onConfirm,
-            style: destructive
-                ? FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  )
-                : null,
             child: Text(confirmLabel, textAlign: TextAlign.center),
           ),
         ),

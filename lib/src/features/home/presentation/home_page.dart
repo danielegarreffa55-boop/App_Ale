@@ -111,7 +111,7 @@ class HomePage extends ConsumerWidget {
                       alignment: Alignment.centerLeft,
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        AppConfig.address,
+                        AppConfig.address.replaceAll(' ', '\u00A0'),
                         maxLines: 1,
                         softWrap: false,
                       ),

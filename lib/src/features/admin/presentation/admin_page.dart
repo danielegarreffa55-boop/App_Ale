@@ -1104,6 +1104,11 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
   ];
 
   late DateTime _selectedDay;
+  bool _updatingAgenda = false;
+
+  void _setAgendaLoading(bool value) {
+    if (mounted) setState(() => _updatingAgenda = value);
+  }
 
   @override
   void initState() {
@@ -1318,6 +1323,7 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
     final manualClientName = clientNameController.text.trim();
     clientNameController.dispose();
     if (submitted != true || startAt == null) return;
+    _setAgendaLoading(true);
     try {
       await ref
           .read(appointmentRepositoryProvider)
@@ -1331,7 +1337,6 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
             serviceId: serviceId,
             startAt: startAt!,
           );
-      ref.invalidate(adminAppointmentsProvider);
       final localStart = startAt!.inStudioTimezone;
       if (mounted) {
         setState(
@@ -1341,6 +1346,9 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
             localStart.day,
           ),
         );
+        ref.invalidate(adminAppointmentsProvider);
+        ref.invalidate(adminAgendaProvider(_agendaRange));
+        await ref.read(adminAgendaProvider(_agendaRange).future);
       }
     } catch (error) {
       if (context.mounted) {
@@ -1348,6 +1356,8 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
           SnackBar(content: Text('Creazione non riuscita: $error')),
         );
       }
+    } finally {
+      _setAgendaLoading(false);
     }
   }
 
@@ -1368,11 +1378,13 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
       label: 'Ferie, pausa, impegno…',
     );
     if (reason == null) return;
+    _setAgendaLoading(true);
     try {
       await ref
           .read(appointmentRepositoryProvider)
           .adminCreateBlock(startAt: start, endAt: end, reason: reason);
       ref.invalidate(adminBlocksProvider);
+      await ref.read(adminBlocksProvider.future);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1388,6 +1400,8 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
           context,
         ).showSnackBar(SnackBar(content: Text('Blocco non riuscito: $error')));
       }
+    } finally {
+      _setAgendaLoading(false);
     }
   }
 
@@ -1535,8 +1549,15 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
       ),
     );
     if (action == null || !mounted) return;
+    var operationStarted = false;
+    void startOperation() {
+      operationStarted = true;
+      _setAgendaLoading(true);
+    }
+
     try {
       if (action == 'accept') {
+        startOperation();
         await ref.read(appointmentRepositoryProvider).adminAccept(item.id);
       } else if (action == 'counter') {
         final startAt = await _pickDateTime(
@@ -1544,16 +1565,29 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
           initial: item.requestedStartAt,
         );
         if (startAt == null) return;
+        if (!mounted) return;
+        final message = await _textDialog(
+          context,
+          title: 'Proponi un nuovo orario',
+          label: 'Messaggio per il cliente (facoltativo)',
+        );
+        if (message == null || !mounted) return;
+        startOperation();
         await ref
             .read(appointmentRepositoryProvider)
-            .adminCounterPropose(item.id, startAt);
+            .adminCounterPropose(
+              item.id,
+              startAt,
+              reason: message.isEmpty ? null : message,
+            );
       } else if (action == 'reject') {
         final reason = await _textDialog(
           context,
           title: 'Rifiuta richiesta',
-          label: 'Motivo facoltativo',
+          label: 'Messaggio per il cliente (facoltativo)',
         );
-        if (reason == null) return;
+        if (reason == null || !mounted) return;
+        startOperation();
         await ref
             .read(appointmentRepositoryProvider)
             .adminReject(item.id, reason: reason.isEmpty ? null : reason);
@@ -1563,25 +1597,32 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
           initial: item.confirmedStartAt,
         );
         if (startAt == null) return;
+        startOperation();
         await ref
             .read(appointmentRepositoryProvider)
             .adminRescheduleAppointment(item.id, startAt);
       } else if (action == 'cancel') {
+        startOperation();
         await ref
             .read(appointmentRepositoryProvider)
             .cancelAppointment(item.id);
       } else {
+        startOperation();
         await ref
             .read(appointmentRepositoryProvider)
             .adminCompleteAppointment(item.id);
       }
       ref.invalidate(adminAppointmentsProvider);
+      ref.invalidate(adminAgendaProvider(_agendaRange));
+      await ref.read(adminAgendaProvider(_agendaRange).future);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Operazione non riuscita: $error')),
         );
       }
+    } finally {
+      if (operationStarted) _setAgendaLoading(false);
     }
   }
 
@@ -1635,92 +1676,138 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
         : opening.start! ~/ 60;
     final closingHour = opening.end == null ? 20 : (opening.end! / 60).ceil();
     final endHour = closingHour <= 20 ? 20 : closingHour;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        _SectionHeader(
-          'Agenda',
-          subtitle: 'Calendario giornaliero e gestione degli slot',
-          actions: [
-            FilledButton.tonalIcon(
-              onPressed: () => _createBlock(
-                context,
-                initialStartAt: _suggestedStart(opening.start, opening.end),
-              ),
-              icon: const Icon(Icons.block_outlined),
-              label: const Text('Blocca fascia'),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionHeader(
+              'Agenda',
+              subtitle: 'Calendario giornaliero e gestione degli slot',
+              actions: [
+                FilledButton.tonalIcon(
+                  onPressed: _updatingAgenda
+                      ? null
+                      : () => _createBlock(
+                          context,
+                          initialStartAt: _suggestedStart(
+                            opening.start,
+                            opening.end,
+                          ),
+                        ),
+                  icon: const Icon(Icons.block_outlined),
+                  label: const Text('Blocca fascia'),
+                ),
+                FilledButton.icon(
+                  onPressed: _updatingAgenda
+                      ? null
+                      : () => _manualAppointment(
+                          context,
+                          initialStartAt: _suggestedStart(
+                            opening.start,
+                            opening.end,
+                          ),
+                        ),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nuovo'),
+                ),
+              ],
             ),
-            FilledButton.icon(
-              onPressed: () => _manualAppointment(
-                context,
-                initialStartAt: _suggestedStart(opening.start, opening.end),
+            const SizedBox(height: 16),
+            _AgendaDateToolbar(
+              day: _selectedDay,
+              onPrevious: () => setState(
+                () => _selectedDay = _selectedDay.subtract(
+                  const Duration(days: 1),
+                ),
               ),
-              icon: const Icon(Icons.add),
-              label: const Text('Nuovo'),
+              onNext: () => setState(
+                () => _selectedDay = _selectedDay.add(const Duration(days: 1)),
+              ),
+              onPickDate: () => _pickAgendaDay(context),
+              onToday: () {
+                final today = DateTime.now().inStudioTimezone;
+                setState(
+                  () => _selectedDay = DateTime(
+                    today.year,
+                    today.month,
+                    today.day,
+                  ),
+                );
+              },
+              hasPendingRequests: (appointments.value ?? const <Appointment>[])
+                  .any((item) => item.status == AppointmentStatus.pendingAdmin),
+            ),
+            const SizedBox(height: 10),
+            const _AgendaLegend(),
+            const SizedBox(height: 10),
+            Expanded(
+              child: AsyncValueView<List<Appointment>>(
+                value: appointments,
+                onRetry: () =>
+                    ref.invalidate(adminAgendaProvider(_agendaRange)),
+                data: (items) {
+                  final calendarItems =
+                      items
+                          .where(
+                            (item) =>
+                                item.status == AppointmentStatus.pendingAdmin ||
+                                item.status == AppointmentStatus.confirmed ||
+                                item.status == AppointmentStatus.completed,
+                          )
+                          .toList()
+                        ..sort(
+                          (a, b) =>
+                              a.effectiveStartAt.compareTo(b.effectiveStartAt),
+                        );
+                  return AsyncValueView<List<AgendaBlock>>(
+                    value: blocks,
+                    onRetry: () => ref.invalidate(adminBlocksProvider),
+                    data: (dayBlocks) => AdminDayCalendar(
+                      day: _selectedDay,
+                      appointments: calendarItems,
+                      blocks: dayBlocks,
+                      startHour: startHour,
+                      endHour: endHour,
+                      openingStartMinute: opening.start,
+                      openingEndMinute: opening.end,
+                      onEmptySlotTap: (startAt) =>
+                          _manualAppointment(context, initialStartAt: startAt),
+                      onAppointmentTap: _openAppointment,
+                      onBlockTap: _openBlock,
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        _AgendaDateToolbar(
-          day: _selectedDay,
-          onPrevious: () => setState(
-            () => _selectedDay = _selectedDay.subtract(const Duration(days: 1)),
-          ),
-          onNext: () => setState(
-            () => _selectedDay = _selectedDay.add(const Duration(days: 1)),
-          ),
-          onPickDate: () => _pickAgendaDay(context),
-          onToday: () {
-            final today = DateTime.now().inStudioTimezone;
-            setState(
-              () => _selectedDay = DateTime(today.year, today.month, today.day),
-            );
-          },
-          hasPendingRequests: (appointments.value ?? const <Appointment>[]).any(
-            (item) => item.status == AppointmentStatus.pendingAdmin,
-          ),
-        ),
-        const SizedBox(height: 10),
-        const _AgendaLegend(),
-        const SizedBox(height: 10),
-        Expanded(
-          child: AsyncValueView<List<Appointment>>(
-            value: appointments,
-            onRetry: () => ref.invalidate(adminAgendaProvider(_agendaRange)),
-            data: (items) {
-              final calendarItems =
-                  items
-                      .where(
-                        (item) =>
-                            item.status == AppointmentStatus.pendingAdmin ||
-                            item.status == AppointmentStatus.confirmed ||
-                            item.status == AppointmentStatus.completed,
-                      )
-                      .toList()
-                    ..sort(
-                      (a, b) =>
-                          a.effectiveStartAt.compareTo(b.effectiveStartAt),
-                    );
-              return AsyncValueView<List<AgendaBlock>>(
-                value: blocks,
-                onRetry: () => ref.invalidate(adminBlocksProvider),
-                data: (dayBlocks) => AdminDayCalendar(
-                  day: _selectedDay,
-                  appointments: calendarItems,
-                  blocks: dayBlocks,
-                  startHour: startHour,
-                  endHour: endHour,
-                  openingStartMinute: opening.start,
-                  openingEndMinute: opening.end,
-                  onEmptySlotTap: (startAt) =>
-                      _manualAppointment(context, initialStartAt: startAt),
-                  onAppointmentTap: _openAppointment,
-                  onBlockTap: _openBlock,
+        if (_updatingAgenda)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface
+                  .withValues(alpha: 0.72),
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        ),
+                        SizedBox(width: 14),
+                        Text('Aggiornamento agenda…'),
+                      ],
+                    ),
+                  ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
-        ),
       ],
     );
   }

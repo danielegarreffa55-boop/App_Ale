@@ -31,7 +31,6 @@ class AppointmentsPage extends ConsumerWidget {
             confirmLabel: 'Invia richiesta',
             onCancel: () => Navigator.pop(context, false),
             onConfirm: () => Navigator.pop(context, true),
-            destructive: true,
           ),
         ],
       ),

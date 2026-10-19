@@ -78,7 +78,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             confirmLabel: 'Elimina definitivamente',
             onCancel: () => Navigator.pop(context, false),
             onConfirm: () => Navigator.pop(context, true),
-            destructive: true,
           ),
         ],
       ),
