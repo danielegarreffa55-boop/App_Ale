@@ -77,12 +77,20 @@ def rate_limit(
 
 def availability(
     db: Database[dict[str, Any]], user_id: str, service_id: str, day: date
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     rate_limit(db, user_id, "availability", 60)
     service = db.services.find_one({"_id": service_id, "active": True})
     if not service:
         raise not_found("SERVICE_NOT_FOUND")
-    return slots_for_day(day, service, _config(db))
+    slots = slots_for_day(day, service, _config(db))
+    for slot in slots:
+        start_at = datetime.fromisoformat(slot["startAt"].replace("Z", "+00:00"))
+        end_at = datetime.fromisoformat(slot["endAt"].replace("Z", "+00:00"))
+        lock_end = end_at + timedelta(minutes=int(service.get("bufferMinutes") or 0))
+        slot["available"] = db.appointment_locks.find_one(
+            {"_id": {"$in": lock_bucket_ids(start_at, lock_end)}}
+        ) is None
+    return slots
 
 
 def create_request(
@@ -115,6 +123,16 @@ def create_request(
         end_at + timedelta(minutes=buffer_minutes),
         config,
     )
+    if db.appointment_locks.find_one(
+        {
+            "_id": {
+                "$in": lock_bucket_ids(
+                    start_at, end_at + timedelta(minutes=buffer_minutes)
+                )
+            }
+        }
+    ):
+        raise failed_precondition("SLOT_UNAVAILABLE")
     appointment_id = str(uuid4())
     now = utc_now()
     client_name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()

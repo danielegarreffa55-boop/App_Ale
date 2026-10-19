@@ -474,11 +474,11 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
               width: 10,
               height: 10,
               decoration: const BoxDecoration(
-                color: AppTheme.burgundy,
+                color: AppTheme.sage,
                 shape: BoxShape.circle,
               ),
             ),
-            const Expanded(child: Divider(color: AppTheme.burgundy, height: 1)),
+            const Expanded(child: Divider(color: AppTheme.sage, height: 1)),
           ],
         ),
       ),

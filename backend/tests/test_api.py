@@ -277,7 +277,8 @@ def test_clients_can_request_same_slot_but_only_admin_can_confirm_one(
     first = _register(client, "first@example.it")
     second = _register(client, "second@example.it")
     db.users.update_many({}, {"$set": {"emailVerified": True}})
-    start = _open_start().isoformat()
+    start_at = _open_start()
+    start = start_at.isoformat()
 
     first_request = client.post(
         "/v1/appointments",
@@ -304,6 +305,28 @@ def test_clients_can_request_same_slot_but_only_admin_can_confirm_one(
     assert accepted.status_code == 200
     assert conflict.status_code == 409
     assert conflict.json()["error"]["message"] == "SLOT_UNAVAILABLE"
+
+    availability = client.get(
+        "/v1/availability",
+        params={"serviceId": "taglio", "date": start_at.date().isoformat()},
+        headers=_authorization(second),
+    )
+    assert availability.status_code == 200
+    matching_slot = next(
+        slot
+        for slot in availability.json()["slots"]
+        if datetime.fromisoformat(slot["startAt"].replace("Z", "+00:00"))
+        == start_at.astimezone(ZoneInfo("UTC"))
+    )
+    assert matching_slot["available"] is False
+
+    new_request = client.post(
+        "/v1/appointments",
+        json={"serviceId": "taglio", "requestedStartAt": start},
+        headers=_authorization(second),
+    )
+    assert new_request.status_code == 409
+    assert new_request.json()["error"]["message"] == "SLOT_UNAVAILABLE"
 
 
 def test_agenda_block_warns_but_does_not_prevent_confirmation(

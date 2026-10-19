@@ -23,6 +23,20 @@ class _AvailabilityRepository extends AppointmentRepository {
   ];
 }
 
+class _BookedAvailabilityRepository extends AppointmentRepository {
+  @override
+  Future<List<AvailabilitySlot>> availability({
+    required String serviceId,
+    required DateTime localDay,
+  }) async => [
+    AvailabilitySlot(
+      startAt: localDay.add(const Duration(hours: 10)),
+      endAt: localDay.add(const Duration(hours: 10, minutes: 30)),
+      available: false,
+    ),
+  ];
+}
+
 void main() {
   setUpAll(() async {
     tz_data.initializeTimeZones();
@@ -106,5 +120,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('submitBookingButton')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('uno slot confermato è visibile ma non selezionabile', (
+    tester,
+  ) async {
+    const service = SalonService(
+      id: 'taglio',
+      name: 'Taglio',
+      description: '',
+      durationMinutes: 30,
+      bufferMinutes: 0,
+      active: true,
+      displayOrder: 0,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          servicesProvider.overrideWith((ref) => Stream.value([service])),
+          studioConfigProvider.overrideWith(
+            (ref) => Stream.value(<String, dynamic>{}),
+          ),
+          appointmentRepositoryProvider.overrideWith(
+            (ref) => _BookedAvailabilityRepository(),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BookingPage())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Taglio').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tutti gli orari sono già prenotati'), findsOneWidget);
+    final picker = tester.widget<OutlinedButton>(
+      find.byKey(const Key('bookingTimePickerButton')),
+    );
+    expect(picker.onPressed, isNull);
   });
 }

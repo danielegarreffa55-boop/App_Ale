@@ -23,6 +23,8 @@ String bookingRequestErrorMessage(Object error) {
     'DATE_OUT_OF_RANGE' => 'Questo orario non rientra nel periodo prenotabile.',
     'SERVICE_NOT_FOUND' =>
       'Il servizio scelto non è più disponibile. Selezionane un altro.',
+    'SLOT_UNAVAILABLE' =>
+      'Questo orario è già stato prenotato. Scegli un altro orario.',
     'RATE_LIMITED' =>
       'Hai inviato troppe richieste. Attendi qualche minuto e riprova.',
     _ when error.code == 'unauthenticated' =>
@@ -112,12 +114,21 @@ class _BookingPageState extends ConsumerState<BookingPage> {
             ),
             for (final slot in slots)
               ListTile(
-                leading: const Icon(Icons.access_time_rounded),
+                enabled: slot.available,
+                leading: Icon(
+                  slot.available
+                      ? Icons.access_time_rounded
+                      : Icons.event_busy_rounded,
+                ),
                 title: Text(slot.startAt.italianTime),
-                trailing: slot.startAt == _selectedSlot?.startAt
+                subtitle: slot.available ? null : const Text('Già prenotato'),
+                trailing:
+                    slot.available && slot.startAt == _selectedSlot?.startAt
                     ? const Icon(Icons.check_circle_rounded)
                     : null,
-                onTap: () => Navigator.pop(sheetContext, slot),
+                onTap: slot.available
+                    ? () => Navigator.pop(sheetContext, slot)
+                    : null,
               ),
           ],
         ),
@@ -394,15 +405,22 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                             ),
                           );
                         }
+                        final availableCount = slots
+                            .where((slot) => slot.available)
+                            .length;
                         return SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
                             key: const Key('bookingTimePickerButton'),
-                            onPressed: () => _pickTime(slots),
+                            onPressed: availableCount == 0
+                                ? null
+                                : () => _pickTime(slots),
                             icon: const Icon(Icons.access_time_rounded),
                             label: Text(
                               _selectedSlot == null
-                                  ? 'Scegli orario (${slots.length} disponibili)'
+                                  ? availableCount == 0
+                                        ? 'Tutti gli orari sono già prenotati'
+                                        : 'Scegli orario ($availableCount disponibili)'
                                   : 'Orario ${_selectedSlot!.startAt.italianTime}',
                             ),
                           ),

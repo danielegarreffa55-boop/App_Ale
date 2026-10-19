@@ -145,17 +145,23 @@ class Appointment {
 }
 
 class AvailabilitySlot {
-  const AvailabilitySlot({required this.startAt, required this.endAt});
+  const AvailabilitySlot({
+    required this.startAt,
+    required this.endAt,
+    this.available = true,
+  });
 
   factory AvailabilitySlot.fromJson(Map<Object?, Object?> data) {
     return AvailabilitySlot(
       startAt: DateTime.parse(data['startAt']! as String).toUtc(),
       endAt: DateTime.parse(data['endAt']! as String).toUtc(),
+      available: data['available'] as bool? ?? true,
     );
   }
 
   final DateTime startAt;
   final DateTime endAt;
+  final bool available;
 }
 
 class AgendaBlock {

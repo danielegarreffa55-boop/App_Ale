@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 abstract final class AppTheme {
   static const ink = Color(0xFF181818);
   static const beige = Color(0xFFE8E1D5);
-  static const burgundy = Color(0xFF7A302B);
+  static const sage = Color(0xFF5F765F);
   static const paper = Color(0xFFF6F1E7);
   static const raised = Color(0xFFFFFCF5);
   static const line = Color(0xFFB8AE9E);
 
   static ThemeData get editorial {
     final scheme = const ColorScheme.light(
-      primary: burgundy,
+      primary: sage,
       onPrimary: raised,
-      primaryContainer: Color(0xFFF0D8D4),
-      onPrimaryContainer: Color(0xFF3A1110),
+      primaryContainer: Color(0xFFDDE7DC),
+      onPrimaryContainer: Color(0xFF243428),
       secondary: ink,
       onSecondary: raised,
       secondaryContainer: beige,
@@ -93,7 +93,7 @@ abstract final class AppTheme {
         filled: true,
         fillColor: raised,
         labelStyle: TextStyle(color: ink.withValues(alpha: 0.7)),
-        floatingLabelStyle: const TextStyle(color: burgundy),
+        floatingLabelStyle: const TextStyle(color: sage),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(4),
           borderSide: const BorderSide(color: line),
@@ -104,13 +104,13 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(4),
-          borderSide: const BorderSide(color: burgundy, width: 1.5),
+          borderSide: const BorderSide(color: sage, width: 1.5),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 52),
-          backgroundColor: burgundy,
+          backgroundColor: sage,
           foregroundColor: raised,
           disabledBackgroundColor: beige,
           disabledForegroundColor: ink.withValues(alpha: 0.38),
@@ -123,31 +123,31 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: burgundy,
+          foregroundColor: sage,
           minimumSize: const Size(48, 48),
-          side: const BorderSide(color: burgundy),
+          side: const BorderSide(color: sage),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: burgundy),
+        style: TextButton.styleFrom(foregroundColor: sage),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 76,
         elevation: 0,
         backgroundColor: raised,
-        indicatorColor: burgundy.withValues(alpha: 0.12),
+        indicatorColor: sage.withValues(alpha: 0.12),
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected) ? burgundy : ink,
+            color: states.contains(WidgetState.selected) ? sage : ink,
           ),
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
-            color: states.contains(WidgetState.selected) ? burgundy : ink,
+            color: states.contains(WidgetState.selected) ? sage : ink,
             fontSize: 10,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w700
@@ -158,20 +158,20 @@ abstract final class AppTheme {
       ),
       navigationRailTheme: const NavigationRailThemeData(
         backgroundColor: raised,
-        indicatorColor: Color(0xFFF0D8D4),
-        selectedIconTheme: IconThemeData(color: burgundy),
+        indicatorColor: Color(0xFFDDE7DC),
+        selectedIconTheme: IconThemeData(color: sage),
         selectedLabelTextStyle: TextStyle(
-          color: burgundy,
+          color: sage,
           fontWeight: FontWeight.w700,
         ),
       ),
       navigationDrawerTheme: const NavigationDrawerThemeData(
         backgroundColor: raised,
-        indicatorColor: Color(0xFFF0D8D4),
+        indicatorColor: Color(0xFFDDE7DC),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: raised,
-        selectedColor: const Color(0xFFF0D8D4),
+        selectedColor: const Color(0xFFDDE7DC),
         side: const BorderSide(color: line),
         labelStyle: const TextStyle(color: ink),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -190,14 +190,14 @@ abstract final class AppTheme {
       ),
       datePickerTheme: const DatePickerThemeData(
         backgroundColor: raised,
-        headerBackgroundColor: burgundy,
+        headerBackgroundColor: sage,
         headerForegroundColor: raised,
       ),
       snackBarTheme: const SnackBarThemeData(
         backgroundColor: ink,
         contentTextStyle: TextStyle(color: raised),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: burgundy),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: sage),
     );
   }
 }
