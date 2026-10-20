@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 abstract final class AppTheme {
   static const ink = Color(0xFF181818);
   static const beige = Color(0xFFE8E1D5);
-  static const sage = Color(0xFF5F765F);
+  static const sage = Color(0xFF34B67A);
   static const paper = Color(0xFFF6F1E7);
   static const raised = Color(0xFFFFFCF5);
   static const line = Color(0xFFB8AE9E);
@@ -12,8 +12,8 @@ abstract final class AppTheme {
     final scheme = const ColorScheme.light(
       primary: sage,
       onPrimary: raised,
-      primaryContainer: Color(0xFFDDE7DC),
-      onPrimaryContainer: Color(0xFF243428),
+      primaryContainer: Color(0xFFD3F3E3),
+      onPrimaryContainer: Color(0xFF0A3D28),
       secondary: ink,
       onSecondary: raised,
       secondaryContainer: beige,
@@ -158,7 +158,7 @@ abstract final class AppTheme {
       ),
       navigationRailTheme: const NavigationRailThemeData(
         backgroundColor: raised,
-        indicatorColor: Color(0xFFDDE7DC),
+        indicatorColor: Color(0xFFD3F3E3),
         selectedIconTheme: IconThemeData(color: sage),
         selectedLabelTextStyle: TextStyle(
           color: sage,
@@ -167,11 +167,11 @@ abstract final class AppTheme {
       ),
       navigationDrawerTheme: const NavigationDrawerThemeData(
         backgroundColor: raised,
-        indicatorColor: Color(0xFFDDE7DC),
+        indicatorColor: Color(0xFFD3F3E3),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: raised,
-        selectedColor: const Color(0xFFDDE7DC),
+        selectedColor: const Color(0xFFD3F3E3),
         side: const BorderSide(color: line),
         labelStyle: const TextStyle(color: ink),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
