@@ -384,9 +384,7 @@ def test_admin_can_create_appointment_for_unregistered_client(
     )
 
     assert created.status_code == 201
-    appointment = db.appointments.find_one(
-        {"_id": created.json()["appointmentId"]}
-    )
+    appointment = db.appointments.find_one({"_id": created.json()["appointmentId"]})
     assert appointment is not None
     assert appointment["clientId"] is None
     assert appointment["clientName"] == "Giulia Bianchi"
@@ -433,9 +431,7 @@ def test_admin_message_is_visible_on_counter_proposal(
     customer = _register(client, "message-client@example.it")
     manager = _register(client, "message-manager@example.it")
     db.users.update_many({}, {"$set": {"emailVerified": True}})
-    db.users.update_one(
-        {"_id": manager["user"]["id"]}, {"$set": {"role": "manager"}}
-    )
+    db.users.update_one({"_id": manager["user"]["id"]}, {"$set": {"role": "manager"}})
     start = _open_start()
     created = client.post(
         "/v1/appointments",

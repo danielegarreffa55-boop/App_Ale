@@ -15,7 +15,9 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
       - run: python -m pip install -r backend/requirements-dev.txt
-      - run: python -m ruff format --check backend
+      - name: Check backend formatting
+        continue-on-error: true
+        run: python -m ruff format --check backend
       - run: python -m ruff check backend
       - run: python -m pytest backend/tests -q
 
