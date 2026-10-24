@@ -47,6 +47,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate iOS app icons
+        run: |
+          failed=0
+          for icon in ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png; do
+            if [[ "$(sips -g hasAlpha "$icon" | awk '/hasAlpha/ {print $2}')" != "no" ]]; then
+              echo "::error file=$icon::iOS app icons must not contain an alpha channel"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.2'
