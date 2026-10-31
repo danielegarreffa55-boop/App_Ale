@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 class BrandLogo extends StatelessWidget {
   const BrandLogo({this.maxWidth = 340, super.key});
 
@@ -37,7 +39,7 @@ class BrandLogo extends StatelessWidget {
             Text(
               'H A I R',
               style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                color: AppTheme.accent,
                 letterSpacing: 7,
               ),
             ),
@@ -89,7 +91,7 @@ class BrandWordmark extends StatelessWidget {
                 Text(
                   'H A I R',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+                    color: AppTheme.accent,
                     fontSize: 7,
                     letterSpacing: 3.2,
                   ),

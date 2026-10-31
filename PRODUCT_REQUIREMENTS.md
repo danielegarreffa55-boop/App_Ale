@@ -13,8 +13,9 @@ nel repository.
   `A` e `G`.
 - Concept 01 e 02: eventuali elementi editoriali secondari.
 - Payoff secondario: **Hair is a form of expression.**
-- Palette: nero profondo `#090A0C`, antracite `#14161A`, grafite
-  `#30343B`, bianco `#F5F5F5` e grigio secondario `#A7ABB2`.
+- Palette: graphite `#101216`, superfici stratificate `#1B1F25` e `#232831`,
+  bordo `#343B46`, bianco `#F4F5F7`, grigio secondario `#A4AAB4` e accento
+  champagne `#C7B58A` riservato ad azioni e selezioni.
 - I colori semantici degli stati di prenotazione restano distinti e non
   vengono riutilizzati come colori di brand.
 - I font definitivi devono avere una licenza commerciale chiara per app, web,

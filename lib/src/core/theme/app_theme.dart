@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
-  static const canvas = Color(0xFF090A0C);
-  static const panel = Color(0xFF14161A);
-  static const panelStrong = Color(0xFF1B1E23);
-  static const panelElevated = Color(0xFF23262B);
-  static const line = Color(0xFF30343B);
-  static const ink = Color(0xFFF5F5F5);
-  static const muted = Color(0xFFA7ABB2);
-  static const currentTimeIndicator = ink;
+  static const canvas = Color(0xFF101216);
+  static const chrome = Color(0xFF15181D);
+  static const panel = Color(0xFF1B1F25);
+  static const panelStrong = Color(0xFF232831);
+  static const panelElevated = Color(0xFF2B313B);
+  static const line = Color(0xFF343B46);
+  static const ink = Color(0xFFF4F5F7);
+  static const muted = Color(0xFFA4AAB4);
+  static const subtle = Color(0xFF747B86);
+  static const accent = Color(0xFFC7B58A);
+  static const currentTimeIndicator = accent;
 
   static ThemeData get editorial {
     final scheme =
         const ColorScheme.dark(
-          primary: ink,
+          primary: accent,
           onPrimary: canvas,
           primaryContainer: panelElevated,
           onPrimaryContainer: ink,
@@ -32,18 +35,18 @@ abstract final class AppTheme {
           errorContainer: Color(0xFF4A171A),
           onErrorContainer: Color(0xFFFFDAD9),
           outline: line,
-          outlineVariant: Color(0xFF25282E),
+          outlineVariant: Color(0xFF292F38),
           shadow: Color(0xB3000000),
           scrim: Color(0xCC000000),
           inverseSurface: ink,
           onInverseSurface: canvas,
-          inversePrimary: Color(0xFF2A2D32),
+          inversePrimary: Color(0xFF3B3425),
         ).copyWith(
-          surfaceContainerLowest: const Color(0xFF07080A),
+          surfaceContainerLowest: const Color(0xFF0C0E11),
           surfaceContainerLow: panel,
           surfaceContainer: panelStrong,
           surfaceContainerHigh: panelElevated,
-          surfaceContainerHighest: const Color(0xFF2B2F35),
+          surfaceContainerHighest: const Color(0xFF333A45),
         );
 
     final baseText = Typography.material2021().white.apply(
@@ -98,7 +101,7 @@ abstract final class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        backgroundColor: canvas,
+        backgroundColor: chrome,
         foregroundColor: ink,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
@@ -110,10 +113,11 @@ abstract final class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: 1,
         color: panel,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
+        shadowColor: const Color(0x66000000),
         shape: roundedCard,
       ),
       listTileTheme: const ListTileThemeData(
@@ -140,7 +144,7 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: ink, width: 1.4),
+          borderSide: const BorderSide(color: accent, width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -154,7 +158,7 @@ abstract final class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 52),
-          backgroundColor: ink,
+          backgroundColor: accent,
           foregroundColor: canvas,
           disabledBackgroundColor: panelElevated,
           disabledForegroundColor: muted.withValues(alpha: 0.55),
@@ -170,7 +174,7 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: ink,
+          foregroundColor: accent,
           minimumSize: const Size(48, 48),
           side: const BorderSide(color: line),
           shape: RoundedRectangleBorder(
@@ -180,7 +184,7 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: ink,
+          foregroundColor: accent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -192,20 +196,20 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: 76,
         elevation: 0,
-        backgroundColor: const Color(0xFF0D0F12),
+        backgroundColor: chrome,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: ink.withValues(alpha: 0.10),
+        indicatorColor: accent.withValues(alpha: 0.14),
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected) ? ink : muted,
+            color: states.contains(WidgetState.selected) ? accent : muted,
           ),
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
-            color: states.contains(WidgetState.selected) ? ink : muted,
+            color: states.contains(WidgetState.selected) ? accent : muted,
             fontSize: 10,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w700
@@ -215,12 +219,12 @@ abstract final class AppTheme {
         ),
       ),
       navigationRailTheme: const NavigationRailThemeData(
-        backgroundColor: Color(0xFF0D0F12),
+        backgroundColor: chrome,
         indicatorColor: panelElevated,
-        selectedIconTheme: IconThemeData(color: ink),
+        selectedIconTheme: IconThemeData(color: accent),
         unselectedIconTheme: IconThemeData(color: muted),
         selectedLabelTextStyle: TextStyle(
-          color: ink,
+          color: accent,
           fontWeight: FontWeight.w700,
         ),
         unselectedLabelTextStyle: TextStyle(color: muted),
@@ -239,19 +243,21 @@ abstract final class AppTheme {
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? ink : null,
+          (states) => states.contains(WidgetState.selected) ? accent : null,
         ),
         checkColor: const WidgetStatePropertyAll(canvas),
         side: const BorderSide(color: muted),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
-      radioTheme: const RadioThemeData(fillColor: WidgetStatePropertyAll(ink)),
+      radioTheme: const RadioThemeData(
+        fillColor: WidgetStatePropertyAll(accent),
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected) ? canvas : muted,
         ),
         trackColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? ink : line,
+          (states) => states.contains(WidgetState.selected) ? accent : line,
         ),
       ),
       dividerTheme: const DividerThemeData(color: line, thickness: 0.7),
@@ -275,14 +281,16 @@ abstract final class AppTheme {
       datePickerTheme: DatePickerThemeData(
         backgroundColor: panelStrong,
         surfaceTintColor: Colors.transparent,
-        headerBackgroundColor: ink,
+        headerBackgroundColor: accent,
         headerForegroundColor: canvas,
-        dayForegroundColor: const WidgetStatePropertyAll(ink),
+        dayForegroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? canvas : ink,
+        ),
         dayBackgroundColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? ink : null,
+          (states) => states.contains(WidgetState.selected) ? accent : null,
         ),
         todayForegroundColor: const WidgetStatePropertyAll(ink),
-        todayBorder: const BorderSide(color: ink),
+        todayBorder: const BorderSide(color: accent),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: line),
@@ -293,9 +301,9 @@ abstract final class AppTheme {
         dialBackgroundColor: panel,
         hourMinuteColor: panelElevated,
         hourMinuteTextColor: ink,
-        dialHandColor: ink,
+        dialHandColor: accent,
         dialTextColor: ink,
-        entryModeIconColor: ink,
+        entryModeIconColor: accent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: line),
@@ -308,7 +316,7 @@ abstract final class AppTheme {
         actionTextColor: canvas,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: ink),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: accent),
       popupMenuTheme: PopupMenuThemeData(
         color: panelStrong,
         surfaceTintColor: Colors.transparent,

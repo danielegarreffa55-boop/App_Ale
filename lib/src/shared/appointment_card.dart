@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/l10n/app_strings.dart';
+import '../core/theme/app_theme.dart';
 import '../core/utils/date_time_x.dart';
 import '../features/appointments/domain/appointment_models.dart';
 
@@ -81,6 +82,7 @@ class AppointmentCard extends StatelessWidget {
     this.onCancel,
     this.onReschedule,
     this.trailing,
+    this.prominent = false,
     super.key,
   });
 
@@ -90,6 +92,7 @@ class AppointmentCard extends StatelessWidget {
   final VoidCallback? onCancel;
   final VoidCallback? onReschedule;
   final Widget? trailing;
+  final bool prominent;
 
   @override
   Widget build(BuildContext context) {
@@ -97,8 +100,18 @@ class AppointmentCard extends StatelessWidget {
         appointment.status == AppointmentStatus.counterProposed &&
         appointment.proposedStartAt != null;
     return Card(
+      color: prominent ? AppTheme.panel : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: prominent
+              ? AppTheme.accent.withValues(alpha: 0.42)
+              : AppTheme.line,
+          width: prominent ? 1.2 : 1,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -114,9 +127,9 @@ class AppointmentCard extends StatelessWidget {
                 ?trailing,
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             AppointmentStatusChip(status: appointment.status),
-            const SizedBox(height: 12),
+            const SizedBox(height: 18),
             if (hasProposal) ...[
               _DateBlock(
                 title: AppStrings.originalRequest,
@@ -155,11 +168,24 @@ class AppointmentCard extends StatelessWidget {
                 date: appointment.effectiveStartAt,
               ),
             if (appointment.adminReason case final reason?) ...[
-              const SizedBox(height: 12),
-              Text('Nota dello studio: $reason'),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.panelStrong,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.line),
+                ),
+                child: Text('Nota dello studio: $reason'),
+              ),
             ],
-            if (onCancel != null) ...[
-              const SizedBox(height: 16),
+            if (onCancel != null || onReschedule != null) ...[
+              const SizedBox(height: 18),
+              const Divider(),
+              const SizedBox(height: 6),
+            ],
+            if (onCancel != null)
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -168,7 +194,6 @@ class AppointmentCard extends StatelessWidget {
                   label: const Text('Annulla appuntamento'),
                 ),
               ),
-            ],
             if (onReschedule != null)
               Align(
                 alignment: Alignment.centerRight,
@@ -199,20 +224,37 @@ class _DateBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: muted ? 0.62 : 1,
-      child: Row(
-        children: [
-          const Icon(Icons.schedule_rounded),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.labelLarge),
-                Text(date.italianDateTime),
-              ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.panelStrong,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.line),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.schedule_rounded, color: AppTheme.accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.labelMedium
+                        ?.copyWith(color: AppTheme.muted),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    date.italianDateTime,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

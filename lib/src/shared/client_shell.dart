@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/l10n/app_strings.dart';
+import '../core/theme/app_theme.dart';
 import '../providers.dart';
 import 'brand_logo.dart';
 
@@ -189,10 +190,22 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     return Scaffold(
       appBar: AppBar(title: const BrandWordmark()),
       body: widget.child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selected,
-        onDestinationSelected: (index) => context.go(_paths[index]),
-        destinations: _destinations,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppTheme.line)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 18,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: selected,
+          onDestinationSelected: (index) => context.go(_paths[index]),
+          destinations: _destinations,
+        ),
       ),
     );
   }
