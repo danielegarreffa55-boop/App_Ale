@@ -13,7 +13,10 @@ nel repository.
   `A` e `G`.
 - Concept 01 e 02: eventuali elementi editoriali secondari.
 - Payoff secondario: **Hair is a form of expression.**
-- Palette: `#181818`, `#E8E1D5`, `#7A302B`.
+- Palette: nero profondo `#090A0C`, antracite `#14161A`, grafite
+  `#30343B`, bianco `#F5F5F5` e grigio secondario `#A7ABB2`.
+- I colori semantici degli stati di prenotazione restano distinti e non
+  vengono riutilizzati come colori di brand.
 - I font definitivi devono avere una licenza commerciale chiara per app, web,
   store e materiali promozionali.
 - Contenuti Instagram utilizzabili soltanto dopo conferma dei diritti da parte

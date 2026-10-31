@@ -180,11 +180,13 @@ def open_app(
   <title>{safe_title} · Alessio Garreffa Hair</title>
   <style>
     body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0;
-      min-height: 100vh; display: grid; place-items: center; background: #f7f3ee;
-      color: #211a17; }}
-    main {{ max-width: 30rem; padding: 2rem; text-align: center; }}
+      min-height: 100vh; display: grid; place-items: center; background: #090a0c;
+      color: #f5f5f5; }}
+    main {{ max-width: 30rem; margin: 1.5rem; padding: 2rem; text-align: center;
+      background: #14161a; border: 1px solid #30343b; border-radius: 1.25rem; }}
     a {{ display: inline-block; margin-top: 1rem; padding: .8rem 1.2rem;
-      border-radius: 999px; background: #211a17; color: white; text-decoration: none; }}
+      border-radius: .75rem; background: #f5f5f5; color: #090a0c;
+      font-weight: 700; text-decoration: none; }}
   </style>
 </head>
 <body>

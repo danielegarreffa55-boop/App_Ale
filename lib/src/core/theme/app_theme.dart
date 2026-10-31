@@ -1,35 +1,52 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
-  static const ink = Color(0xFF181818);
-  static const beige = Color(0xFFE8E1D5);
-  static const sage = Color(0xFF34B67A);
-  static const paper = Color(0xFFF6F1E7);
-  static const raised = Color(0xFFFFFCF5);
-  static const line = Color(0xFFB8AE9E);
+  static const canvas = Color(0xFF090A0C);
+  static const panel = Color(0xFF14161A);
+  static const panelStrong = Color(0xFF1B1E23);
+  static const panelElevated = Color(0xFF23262B);
+  static const line = Color(0xFF30343B);
+  static const ink = Color(0xFFF5F5F5);
+  static const muted = Color(0xFFA7ABB2);
+  static const currentTimeIndicator = ink;
 
   static ThemeData get editorial {
-    final scheme = const ColorScheme.light(
-      primary: sage,
-      onPrimary: raised,
-      primaryContainer: Color(0xFFD3F3E3),
-      onPrimaryContainer: Color(0xFF0A3D28),
-      secondary: ink,
-      onSecondary: raised,
-      secondaryContainer: beige,
-      onSecondaryContainer: ink,
-      tertiary: Color(0xFF9A6A50),
-      onTertiary: raised,
-      surface: paper,
-      onSurface: ink,
-      error: Color(0xFF9B2922),
-      onError: Colors.white,
-      outline: line,
-      outlineVariant: Color(0xFFD8D0C3),
-      shadow: Color(0x24181818),
-    );
+    final scheme =
+        const ColorScheme.dark(
+          primary: ink,
+          onPrimary: canvas,
+          primaryContainer: panelElevated,
+          onPrimaryContainer: ink,
+          secondary: muted,
+          onSecondary: canvas,
+          secondaryContainer: panelStrong,
+          onSecondaryContainer: ink,
+          tertiary: Color(0xFF8FA6D6),
+          onTertiary: canvas,
+          tertiaryContainer: Color(0xFF1D2B47),
+          onTertiaryContainer: Color(0xFFDDE7FF),
+          surface: canvas,
+          onSurface: ink,
+          error: Color(0xFFFF6B6B),
+          onError: Color(0xFF230707),
+          errorContainer: Color(0xFF4A171A),
+          onErrorContainer: Color(0xFFFFDAD9),
+          outline: line,
+          outlineVariant: Color(0xFF25282E),
+          shadow: Color(0xB3000000),
+          scrim: Color(0xCC000000),
+          inverseSurface: ink,
+          onInverseSurface: canvas,
+          inversePrimary: Color(0xFF2A2D32),
+        ).copyWith(
+          surfaceContainerLowest: const Color(0xFF07080A),
+          surfaceContainerLow: panel,
+          surfaceContainer: panelStrong,
+          surfaceContainerHigh: panelElevated,
+          surfaceContainerHighest: const Color(0xFF2B2F35),
+        );
 
-    final baseText = Typography.material2021().black.apply(
+    final baseText = Typography.material2021().white.apply(
       bodyColor: ink,
       displayColor: ink,
     );
@@ -37,20 +54,30 @@ abstract final class AppTheme {
     TextStyle? editorialTitle(TextStyle? style) => style?.copyWith(
       fontFamily: 'Cinzel',
       fontWeight: FontWeight.w500,
-      letterSpacing: 1.4,
+      letterSpacing: 0.8,
       color: ink,
+    );
+
+    final roundedCard = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: const BorderSide(color: line),
     );
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: Brightness.dark,
       colorScheme: scheme,
-      scaffoldBackgroundColor: paper,
+      scaffoldBackgroundColor: canvas,
+      canvasColor: canvas,
+      shadowColor: Colors.black,
+      splashColor: ink.withValues(alpha: 0.08),
+      highlightColor: ink.withValues(alpha: 0.04),
+      iconTheme: const IconThemeData(color: ink),
       textTheme: baseText.copyWith(
         displayLarge: editorialTitle(baseText.displayLarge)
-            ?.copyWith(letterSpacing: 2.4),
+            ?.copyWith(letterSpacing: 1.8),
         displayMedium: editorialTitle(baseText.displayMedium)
-            ?.copyWith(letterSpacing: 2),
+            ?.copyWith(letterSpacing: 1.4),
         displaySmall: editorialTitle(baseText.displaySmall),
         headlineLarge: editorialTitle(baseText.headlineLarge),
         headlineMedium: editorialTitle(baseText.headlineMedium),
@@ -58,146 +85,245 @@ abstract final class AppTheme {
         titleLarge: editorialTitle(baseText.titleLarge),
         titleMedium: baseText.titleMedium?.copyWith(
           fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
         ),
         labelLarge: baseText.labelLarge?.copyWith(
           fontWeight: FontWeight.w700,
-          letterSpacing: 1.1,
+          letterSpacing: 0.7,
         ),
-        labelMedium: baseText.labelMedium?.copyWith(letterSpacing: 0.8),
+        labelMedium: baseText.labelMedium?.copyWith(letterSpacing: 0.4),
+        bodySmall: baseText.bodySmall?.copyWith(color: muted),
       ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
-        backgroundColor: paper,
+        backgroundColor: canvas,
         foregroundColor: ink,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
           color: ink,
           fontFamily: 'Cinzel',
-          fontSize: 17,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
-          letterSpacing: 2,
+          letterSpacing: 1.8,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: raised,
+        color: panel,
+        surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: Color(0xFFD8D0C3)),
-        ),
+        shape: roundedCard,
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: muted,
+        textColor: ink,
+        subtitleTextStyle: TextStyle(color: muted),
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: raised,
-        labelStyle: TextStyle(color: ink.withValues(alpha: 0.7)),
-        floatingLabelStyle: const TextStyle(color: sage),
+        fillColor: panel,
+        labelStyle: const TextStyle(color: muted),
+        floatingLabelStyle: const TextStyle(color: ink),
+        hintStyle: TextStyle(color: muted.withValues(alpha: 0.72)),
+        prefixIconColor: muted,
+        suffixIconColor: muted,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: line),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: const BorderSide(color: sage, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: ink, width: 1.4),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: scheme.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: scheme.error, width: 1.4),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 52),
-          backgroundColor: sage,
-          foregroundColor: raised,
-          disabledBackgroundColor: beige,
-          disabledForegroundColor: ink.withValues(alpha: 0.38),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          backgroundColor: ink,
+          foregroundColor: canvas,
+          disabledBackgroundColor: panelElevated,
+          disabledForegroundColor: muted.withValues(alpha: 0.55),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(
             fontWeight: FontWeight.w700,
-            letterSpacing: 1,
+            letterSpacing: 0.7,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: sage,
+          foregroundColor: ink,
           minimumSize: const Size(48, 48),
-          side: const BorderSide(color: sage),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          side: const BorderSide(color: line),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: sage),
+        style: TextButton.styleFrom(
+          foregroundColor: ink,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: ink),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 76,
         elevation: 0,
-        backgroundColor: raised,
-        indicatorColor: sage.withValues(alpha: 0.12),
+        backgroundColor: const Color(0xFF0D0F12),
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: ink.withValues(alpha: 0.10),
         indicatorShape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(12),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected) ? sage : ink,
+            color: states.contains(WidgetState.selected) ? ink : muted,
           ),
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
-            color: states.contains(WidgetState.selected) ? sage : ink,
+            color: states.contains(WidgetState.selected) ? ink : muted,
             fontSize: 10,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w700
                 : FontWeight.w500,
-            letterSpacing: 0.3,
+            letterSpacing: 0.2,
           ),
         ),
       ),
       navigationRailTheme: const NavigationRailThemeData(
-        backgroundColor: raised,
-        indicatorColor: Color(0xFFD3F3E3),
-        selectedIconTheme: IconThemeData(color: sage),
+        backgroundColor: Color(0xFF0D0F12),
+        indicatorColor: panelElevated,
+        selectedIconTheme: IconThemeData(color: ink),
+        unselectedIconTheme: IconThemeData(color: muted),
         selectedLabelTextStyle: TextStyle(
-          color: sage,
+          color: ink,
           fontWeight: FontWeight.w700,
         ),
+        unselectedLabelTextStyle: TextStyle(color: muted),
       ),
       navigationDrawerTheme: const NavigationDrawerThemeData(
-        backgroundColor: raised,
-        indicatorColor: Color(0xFFD3F3E3),
+        backgroundColor: panel,
+        indicatorColor: panelElevated,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: raised,
-        selectedColor: const Color(0xFFD3F3E3),
+        backgroundColor: panelStrong,
+        selectedColor: panelElevated,
         side: const BorderSide(color: line),
         labelStyle: const TextStyle(color: ink),
+        iconTheme: const IconThemeData(color: ink),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? ink : null,
+        ),
+        checkColor: const WidgetStatePropertyAll(canvas),
+        side: const BorderSide(color: muted),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+      radioTheme: const RadioThemeData(fillColor: WidgetStatePropertyAll(ink)),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? canvas : muted,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? ink : line,
+        ),
       ),
       dividerTheme: const DividerThemeData(color: line, thickness: 0.7),
       dialogTheme: DialogThemeData(
-        backgroundColor: raised,
+        elevation: 18,
+        backgroundColor: panelStrong,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: line),
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: raised,
+        backgroundColor: panelStrong,
+        modalBackgroundColor: panelStrong,
         surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
-      datePickerTheme: const DatePickerThemeData(
-        backgroundColor: raised,
-        headerBackgroundColor: sage,
-        headerForegroundColor: raised,
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: panelStrong,
+        surfaceTintColor: Colors.transparent,
+        headerBackgroundColor: ink,
+        headerForegroundColor: canvas,
+        dayForegroundColor: const WidgetStatePropertyAll(ink),
+        dayBackgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? ink : null,
+        ),
+        todayForegroundColor: const WidgetStatePropertyAll(ink),
+        todayBorder: const BorderSide(color: ink),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: line),
+        ),
       ),
-      snackBarTheme: const SnackBarThemeData(
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: panelStrong,
+        dialBackgroundColor: panel,
+        hourMinuteColor: panelElevated,
+        hourMinuteTextColor: ink,
+        dialHandColor: ink,
+        dialTextColor: ink,
+        entryModeIconColor: ink,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: line),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
         backgroundColor: ink,
-        contentTextStyle: TextStyle(color: raised),
+        contentTextStyle: const TextStyle(color: canvas),
+        actionTextColor: canvas,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: sage),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: ink),
+      popupMenuTheme: PopupMenuThemeData(
+        color: panelStrong,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: line),
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: ink,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: const TextStyle(color: canvas),
+      ),
     );
   }
 }

@@ -417,7 +417,7 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
         button: true,
         label: 'Fascia bloccata, ${block.reason}',
         child: Material(
-          color: AppTheme.ink.withValues(alpha: 0.92),
+          color: AppTheme.panelStrong,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
             side: BorderSide(
@@ -474,11 +474,13 @@ class _AdminDayCalendarState extends State<AdminDayCalendar> {
               width: 10,
               height: 10,
               decoration: const BoxDecoration(
-                color: AppTheme.sage,
+                color: AppTheme.currentTimeIndicator,
                 shape: BoxShape.circle,
               ),
             ),
-            const Expanded(child: Divider(color: AppTheme.sage, height: 1)),
+            const Expanded(
+              child: Divider(color: AppTheme.currentTimeIndicator, height: 1),
+            ),
           ],
         ),
       ),
@@ -605,7 +607,7 @@ class _ClosedArea extends StatelessWidget {
       right: 0,
       height: height,
       child: ColoredBox(
-        color: AppTheme.ink.withValues(alpha: 0.34),
+        color: Colors.black.withValues(alpha: 0.34),
         child: height >= 38
             ? Align(
                 alignment: Alignment.topRight,

@@ -49,6 +49,8 @@ Eseguire `bootstrap_production.py` una sola volta contro Atlas. Registrare l’a
 Inserire l’URL Cloud Run e l’App ID OneSignal in `config/production.json`, ignorato da Git:
 
 ```powershell
+flutter pub get
+Remove-Item android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java -ErrorAction SilentlyContinue
 flutter build appbundle --release --dart-define-from-file=config/production.json
 flutter build web --release --dart-define-from-file=config/production.json
 ```

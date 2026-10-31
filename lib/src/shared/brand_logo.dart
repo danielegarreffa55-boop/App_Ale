@@ -13,43 +13,35 @@ class BrandLogo extends StatelessWidget {
       image: true,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Image.asset(
                 'assets/branding/agh_primary.png',
-                width: 230,
-                height: 230,
+                width: 190,
+                height: 190,
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.high,
                 excludeFromSemantics: true,
               ),
-              const SizedBox(height: 10),
-              Text(
-                'ALESSIO  GARREFFA',
-                style: theme.textTheme.titleLarge?.copyWith(letterSpacing: 4.2),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'ALESSIO GARREFFA',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge?.copyWith(letterSpacing: 3.8),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'H A I R',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                letterSpacing: 7,
               ),
-              const SizedBox(height: 5),
-              Text(
-                'H A I R',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                  letterSpacing: 7,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'HAIR IS A FORM OF EXPRESSION.',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
-                  fontSize: 8,
-                  letterSpacing: 2.1,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -64,27 +56,48 @@ class BrandWordmark extends StatelessWidget {
     final theme = Theme.of(context);
     return Semantics(
       label: 'Alessio Garreffa Hair',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'ALESSIO GARREFFA',
-            maxLines: 1,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontFamily: 'Cinzel',
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2.2,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: Image.asset(
+                'assets/branding/agh_primary.png',
+                width: 34,
+                height: 34,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
+                excludeFromSemantics: true,
+              ),
             ),
-          ),
-          Text(
-            'H A I R',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontSize: 8,
-              letterSpacing: 3.5,
+            const SizedBox(width: 10),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ALESSIO GARREFFA',
+                  maxLines: 1,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontFamily: 'Cinzel',
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.8,
+                  ),
+                ),
+                Text(
+                  'H A I R',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
+                    fontSize: 7,
+                    letterSpacing: 3.2,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

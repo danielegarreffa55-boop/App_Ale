@@ -178,6 +178,10 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           flutter pub get
+          # Flutter 3.47 can leave the development registrant (including
+          # integration_test) under src/main after pub get. Let the release
+          # build regenerate it without dev-only plugins.
+          rm -f android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
           flutter build appbundle \
             --release \
             --build-number="$((1000 + BUILD_NUMBER))" \
