@@ -60,7 +60,7 @@ async def lifespan(_app: FastAPI):
             "$set": {
                 "supportEmail": "alessiogarreffa995@gmail.com",
                 "supportPhone": "+39 388 986 5985",
-                "address": "Via Cottolengo, 44, 10048 Vinovo TO",
+                "address": "Via Gavuzzi 10, 10048 Vinovo TO",
             }
         },
         upsert=True,

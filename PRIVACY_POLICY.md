@@ -1,13 +1,14 @@
 # Informativa sul trattamento dei dati personali
 
-**Alessio Garreffa Hair — versione 2026-10-11-v2**  
-Ultimo aggiornamento: 11 ottobre 2026
+**Alessio Garreffa Hair — versione 2026-11-07-v3**
+Ultimo aggiornamento: 7 novembre 2026
+Versione online: https://molelabs.eu/privacy/app-ale
 
 La presente informativa è resa ai sensi degli articoli 12 e 13 del Regolamento (UE) 2016/679 (“GDPR”) agli utenti dell’app **Alessio Garreffa Hair**.
 
 ## 1. Titolare del trattamento e contatti
 
-Il titolare del trattamento è **Alessio Garreffa Hair**, con sede in **Via Cottolengo, 44, 10048 Vinovo (TO), Italia**.
+Il titolare del trattamento è **Alessio Garreffa, ditta individuale**, P. IVA **13366620014**, con domicilio fiscale in **Via Gavuzzi 10, 10048 Vinovo (TO), Italia**. L’attività dichiarata è servizi di parrucchieri e barbieri.
 
 - Email e contatto per l’esercizio dei diritti: [alessiogarreffa995@gmail.com](mailto:alessiogarreffa995@gmail.com)
 - Telefono: [+39 388 986 5985](tel:+393889865985)

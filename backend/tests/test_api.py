@@ -42,7 +42,7 @@ def _registration() -> dict[str, Any]:
         "phone": "+393331234567",
         "password": "Correct-Horse-42!",
         "privacyAccepted": True,
-        "privacyPolicyVersion": "2026-10-11-v2",
+        "privacyPolicyVersion": "2026-11-07-v3",
     }
 
 

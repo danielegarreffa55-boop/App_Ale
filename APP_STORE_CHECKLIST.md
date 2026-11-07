@@ -6,7 +6,7 @@
 - [ ] Bundle ID definitivo, SKU, versione/build number.
 - [ ] Icona 1024×1024 senza trasparenza e splash approvati.
 - [ ] Screenshot iPhone richiesti e, se dichiarato, iPad; dashboard admin mostrata solo se utile.
-- [ ] URL supporto, marketing e Privacy Policy HTTPS.
+- [x] URL Privacy Policy HTTPS e contatto supporto definiti in `STORE_PRIVACY_DECLARATIONS.md`.
 
 ## Account e firma
 
@@ -18,9 +18,9 @@
 
 ## App Privacy e review
 
-- [ ] Dichiarare contact info (nome/email/telefono) e user content (appuntamenti), con finalità App Functionality.
-- [ ] Dichiarare eventuali dati diagnostici realmente raccolti; no tracking cross-app.
-- [ ] Compilare le privacy nutrition labels includendo MongoDB Atlas, OneSignal e il provider cloud/email effettivamente usati.
+- [x] Contact info, identifiers, appuntamenti e diagnostica mappati in `STORE_PRIVACY_DECLARATIONS.md`.
+- [x] Assenza di tracking cross-app documentata.
+- [x] Fornitori tecnici elencati nell’informativa e categorie Apple mappate.
 - [ ] Fornire account demo review non admin e istruzioni per controproposta; predisporre admin demo se la dashboard è parte della review.
 - [ ] Eliminazione account accessibile nell'app verificata end-to-end.
 - [ ] Testare Dynamic Type, VoiceOver, contrasto, offline/error state e permessi contestuali.

@@ -19,7 +19,7 @@ def main() -> None:
     parser.add_argument("--studio-name", default="Alessio Garreffa Hair")
     parser.add_argument("--phone", default="+39 388 986 5985")
     parser.add_argument("--email", default="alessiogarreffa995@gmail.com")
-    parser.add_argument("--address", default="Via Cottolengo, 44, 10048 Vinovo TO")
+    parser.add_argument("--address", default="Via Gavuzzi 10, 10048 Vinovo TO")
     args = parser.parse_args()
     db = database()
     ensure_indexes(db)

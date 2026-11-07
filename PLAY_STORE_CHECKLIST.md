@@ -3,7 +3,7 @@
 ## Identità e build
 
 - [ ] Application ID definitivo e immutabile.
-- [ ] Nome, short/full description, categoria, contatti e URL Privacy Policy.
+- [x] URL Privacy Policy e cancellazione account definiti in `STORE_PRIVACY_DECLARATIONS.md`.
 - [ ] Icona 512×512, feature graphic 1024×500 e screenshot phone/tablet approvati.
 - [ ] Upload keystore in backup cifrato; Play App Signing abilitato.
 - [ ] `flutter build appbundle --release` firmato e versione/build number incrementati.
@@ -11,9 +11,9 @@
 
 ## Dichiarazioni
 
-- [ ] Data safety: nome, email, telefono, user ID, appuntamenti ed eventuale diagnostica realmente raccolta.
-- [ ] Dichiarare cifratura in transito, possibilità di eliminazione e no condivisione pubblicitaria.
-- [ ] URL web per richiesta eliminazione account, oltre al comando in-app, se richiesto dalla policy vigente.
+- [x] Data safety mappata in `STORE_PRIVACY_DECLARATIONS.md`.
+- [x] Cifratura in transito, eliminazione e assenza di pubblicità documentate.
+- [x] URL web per richiesta eliminazione account predisposto.
 - [ ] Content rating, target audience, ads declaration = nessuna pubblicità.
 - [ ] App access: credenziali demo e istruzioni per flusso cliente/admin.
 - [ ] Permissions declaration: `POST_NOTIFICATIONS` contestuale; nessun permesso sensibile non necessario.

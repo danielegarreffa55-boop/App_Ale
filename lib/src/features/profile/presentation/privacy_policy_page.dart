@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 class PrivacyPolicyPage extends StatelessWidget {
   const PrivacyPolicyPage({super.key});
 
-  static const version = '2026-10-11-v2';
+  static const version = '2026-11-07-v3';
 
   static const _sections = <(String, String)>[
     (
       '1. Titolare del trattamento e contatti',
-      'Il titolare del trattamento è Alessio Garreffa Hair, con sede in Via '
-          'Cottolengo, 44, 10048 Vinovo (TO), Italia. Per informazioni o per '
+      'Il titolare del trattamento è Alessio Garreffa, ditta individuale, P. '
+          'IVA 13366620014, con domicilio fiscale in Via Gavuzzi 10, 10048 '
+          'Vinovo (TO), Italia. Per informazioni o per '
           'esercitare i diritti: alessiogarreffa995@gmail.com · +39 388 986 5985. '
           'Non è stato nominato un Responsabile della protezione dei dati (RPD/DPO), '
           'non ricorrendone allo stato i presupposti di legge.',
@@ -125,13 +126,17 @@ class PrivacyPolicyPage extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   'Alessio Garreffa Hair · versione $version · '
-                  'ultimo aggiornamento 11 ottobre 2026',
+                  'ultimo aggiornamento 7 novembre 2026',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
                 const Text(
                   'Informativa resa ai sensi degli articoli 12 e 13 del '
                   'Regolamento (UE) 2016/679 (GDPR).',
+                ),
+                const SizedBox(height: 8),
+                const SelectableText(
+                  'Versione online: https://molelabs.eu/privacy/app-ale',
                 ),
                 const SizedBox(height: 24),
                 for (final section in _sections) ...[
