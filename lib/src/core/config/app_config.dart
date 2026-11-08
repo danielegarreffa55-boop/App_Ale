@@ -17,7 +17,7 @@ abstract final class AppConfig {
   );
   static const address = String.fromEnvironment(
     'ADDRESS',
-    defaultValue: 'Via Gavuzzi 10, 10048 Vinovo TO',
+    defaultValue: 'Via G. Cottolengo 44, 10048 Vinovo TO',
   );
   static const timezone = String.fromEnvironment(
     'TIMEZONE',
