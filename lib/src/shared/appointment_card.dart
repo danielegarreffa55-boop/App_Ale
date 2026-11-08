@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../core/l10n/app_strings.dart';
 import '../core/theme/app_theme.dart';
@@ -102,7 +103,7 @@ class AppointmentCard extends StatelessWidget {
     return Card(
       color: prominent ? AppTheme.panel : null,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(prominent ? 10 : 12),
         side: BorderSide(
           color: prominent
               ? AppTheme.accent.withValues(alpha: 0.42)
@@ -162,7 +163,9 @@ class AppointmentCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ] else
+            ] else if (prominent)
+              _ProminentDateBlock(date: appointment.effectiveStartAt)
+            else
               _DateBlock(
                 title: 'Data e ora',
                 date: appointment.effectiveStartAt,
@@ -205,6 +208,78 @@ class AppointmentCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProminentDateBlock extends StatelessWidget {
+  const _ProminentDateBlock({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final local = date.inStudioTimezone;
+    final weekday = DateFormat('EEEE', 'it_IT').format(local);
+    final month = DateFormat('MMMM', 'it_IT').format(local);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppTheme.line),
+          bottom: BorderSide(color: AppTheme.line),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 4,
+            child: FittedBox(
+              alignment: Alignment.centerLeft,
+              fit: BoxFit.scaleDown,
+              child: Text(
+                local.italianTime,
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  fontFamily: null,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -1.8,
+                  height: 1,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Container(width: 1, height: 46, color: AppTheme.line),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${weekday[0].toUpperCase()}${weekday.substring(1)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontFamily: null, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${local.day} ${month[0].toUpperCase()}${month.substring(1)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontFamily: null,
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

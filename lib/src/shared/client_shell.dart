@@ -23,18 +23,22 @@ class _ClientShellState extends ConsumerState<ClientShell> {
   static const _destinations = [
     NavigationDestination(
       icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home_rounded),
       label: AppStrings.home,
     ),
     NavigationDestination(
-      icon: Icon(Icons.calendar_month_outlined),
+      icon: Icon(Icons.calendar_today_outlined),
+      selectedIcon: Icon(Icons.calendar_month_rounded),
       label: AppStrings.book,
     ),
     NavigationDestination(
       icon: Icon(Icons.event_note_outlined),
+      selectedIcon: Icon(Icons.event_note_rounded),
       label: AppStrings.appointments,
     ),
     NavigationDestination(
       icon: Icon(Icons.person_outline_rounded),
+      selectedIcon: Icon(Icons.person_rounded),
       label: AppStrings.profile,
     ),
   ];

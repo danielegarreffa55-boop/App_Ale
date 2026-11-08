@@ -110,6 +110,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Taglio').first);
     await tester.pumpAndSettle();
+    expect(find.text('Servizio scelto'), findsOneWidget);
+    expect(find.text('Modifica'), findsOneWidget);
     expect(find.byTooltip('Giorno precedente'), findsOneWidget);
     expect(find.byTooltip('Giorno successivo'), findsOneWidget);
     expect(find.byKey(const Key('bookingTimePickerButton')), findsOneWidget);
@@ -120,6 +122,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('submitBookingButton')), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Modifica'));
+    await tester.pumpAndSettle();
+    expect(find.text('Scegli il servizio'), findsOneWidget);
+    expect(find.text('Modifica'), findsNothing);
   });
 
   testWidgets('uno slot confermato è visibile ma non selezionabile', (

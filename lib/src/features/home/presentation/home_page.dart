@@ -20,6 +20,14 @@ class HomePage extends ConsumerWidget {
     final firstName = displayName != null && displayName.isNotEmpty
         ? displayName.split(' ').first
         : null;
+    final initials = displayName == null || displayName.trim().isEmpty
+        ? 'CL'
+        : displayName
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((part) => part[0].toUpperCase())
+              .join();
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(clientAppointmentsProvider),
       child: ListView(
@@ -30,44 +38,54 @@ class HomePage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-                  decoration: BoxDecoration(
-                    color: AppTheme.chrome,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.line),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: AppTheme.accent,
-                          borderRadius: BorderRadius.circular(99),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Ciao${firstName == null ? '' : ', $firstName'}.',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            'Benvenuto da ${AppConfig.studioName}.',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppTheme.muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Semantics(
+                      button: true,
+                      label: 'Profilo di ${displayName ?? 'Cliente'}',
+                      child: Material(
+                        color: Colors.transparent,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () => context.go('/profile'),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppTheme.line),
+                            ),
+                            child: Text(
+                              initials,
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(color: AppTheme.accent),
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Ciao${firstName == null ? '' : ', $firstName'}',
-                              style: Theme.of(context).textTheme.headlineMedium,
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              'Benvenuto da ${AppConfig.studioName}.',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: AppTheme.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 32),
                 Row(

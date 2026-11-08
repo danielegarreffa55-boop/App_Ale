@@ -62,7 +62,7 @@ abstract final class AppTheme {
     );
 
     final roundedCard = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(10),
       side: const BorderSide(color: line),
     );
 
@@ -135,23 +135,23 @@ abstract final class AppTheme {
         prefixIconColor: muted,
         suffixIconColor: muted,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(7),
           borderSide: const BorderSide(color: line),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(7),
           borderSide: const BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(7),
           borderSide: const BorderSide(color: accent, width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(7),
           borderSide: BorderSide(color: scheme.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(7),
           borderSide: BorderSide(color: scheme.error, width: 1.4),
         ),
       ),
@@ -163,9 +163,7 @@ abstract final class AppTheme {
           disabledBackgroundColor: panelElevated,
           disabledForegroundColor: muted.withValues(alpha: 0.55),
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
           textStyle: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.7,
@@ -177,9 +175,7 @@ abstract final class AppTheme {
           foregroundColor: accent,
           minimumSize: const Size(48, 48),
           side: const BorderSide(color: line),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -194,13 +190,13 @@ abstract final class AppTheme {
         style: IconButton.styleFrom(foregroundColor: ink),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 76,
+        height: 70,
         elevation: 0,
         backgroundColor: chrome,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: accent.withValues(alpha: 0.14),
+        indicatorColor: Colors.transparent,
         indicatorShape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(7),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
@@ -239,7 +235,7 @@ abstract final class AppTheme {
         side: const BorderSide(color: line),
         labelStyle: const TextStyle(color: ink),
         iconTheme: const IconThemeData(color: ink),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith(
@@ -266,7 +262,7 @@ abstract final class AppTheme {
         backgroundColor: panelStrong,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: line),
         ),
       ),
@@ -275,7 +271,7 @@ abstract final class AppTheme {
         modalBackgroundColor: panelStrong,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
         ),
       ),
       datePickerTheme: DatePickerThemeData(

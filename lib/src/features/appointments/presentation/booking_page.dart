@@ -236,7 +236,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Scegli il servizio',
+                  _service == null ? 'Scegli il servizio' : 'Servizio scelto',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 16),
@@ -254,6 +254,54 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                         ),
                       );
                     }
+                    if (_service case final selected?) {
+                      final price = selected.priceCents == null
+                          ? null
+                          : NumberFormat.simpleCurrency(locale: 'it_IT')
+                                .format(selected.priceCents! / 100);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: Color(0xFFC7B58A)),
+                            bottom: BorderSide(color: Color(0xFF343B46)),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    selected.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${selected.durationMinutes} min'
+                                    '${price == null ? '' : ' · ${selected.priceFrom ? 'da ' : ''}$price'}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _service = null;
+                                _selectedSlot = null;
+                                _slots = null;
+                              }),
+                              child: const Text('Modifica'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                     return LayoutBuilder(
                       builder: (context, constraints) {
                         final cardWidth = constraints.maxWidth < 640
@@ -263,7 +311,6 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                           spacing: 12,
                           runSpacing: 12,
                           children: items.map((service) {
-                            final selected = service.id == _service?.id;
                             final price = service.priceCents == null
                                 ? null
                                 : NumberFormat.simpleCurrency(locale: 'it_IT')
@@ -271,13 +318,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                             return SizedBox(
                               width: cardWidth,
                               child: Card(
-                                color: selected
-                                    ? Theme.of(context)
-                                          .colorScheme
-                                          .secondaryContainer
-                                    : null,
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(24),
+                                  borderRadius: BorderRadius.circular(10),
                                   onTap: () {
                                     _service = service;
                                     _loadSlots();
@@ -298,10 +340,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                                                     .titleLarge,
                                               ),
                                             ),
-                                            if (selected)
-                                              const Icon(
-                                                Icons.check_circle_rounded,
-                                              ),
+                                            const Icon(
+                                              Icons.arrow_forward_rounded,
+                                              size: 18,
+                                            ),
                                           ],
                                         ),
                                         if (service.description.isNotEmpty) ...[

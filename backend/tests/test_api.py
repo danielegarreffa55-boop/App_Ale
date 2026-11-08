@@ -632,3 +632,187 @@ def test_failed_push_is_retried_with_same_idempotency_key(
     assert len(payloads) == 2
     assert payloads[0]["idempotency_key"] == payloads[1]["idempotency_key"]
     assert db.notification_logs.find_one({"_id": "notification-1"})["status"] == "SENT"
+
+
+def test_profile_recovery_logout_and_account_deletion_actions(
+    client: TestClient, db: Any
+) -> None:
+    session = _register(client, "lifecycle@example.it")
+    headers = _authorization(session)
+
+    updated = client.patch(
+        "/v1/profile",
+        json={"firstName": "Luisa", "lastName": "Verdi", "phone": "+393401112233"},
+        headers=headers,
+    )
+    resent = client.post("/v1/auth/resend-verification", headers=headers)
+    known_recovery = client.post(
+        "/v1/auth/forgot-password", json={"email": "lifecycle@example.it"}
+    )
+    unknown_recovery = client.post(
+        "/v1/auth/forgot-password", json={"email": "unknown@example.it"}
+    )
+    assert updated.status_code == 200
+    assert updated.json()["user"]["displayName"] == "Luisa Verdi"
+    assert resent.status_code == 200
+    assert known_recovery.json()["ok"] is True
+    assert unknown_recovery.json() == {"ok": True}
+    deleted = client.delete("/v1/account", headers=headers)
+    stored = db.users.find_one({"_id": session["user"]["id"]})
+    assert deleted.json() == {"ok": True}
+    assert stored["deletedAt"] is not None
+    assert stored["email"] == ""
+    assert client.get("/v1/auth/me", headers=headers).status_code == 401
+
+    logout_session = _register(client, "logout@example.it")
+    logged_out = client.post(
+        "/v1/auth/logout", json={"refreshToken": logout_session["refreshToken"]}
+    )
+    rejected_refresh = client.post(
+        "/v1/auth/refresh", json={"refreshToken": logout_session["refreshToken"]}
+    )
+    assert logged_out.json() == {"ok": True}
+    assert rejected_refresh.status_code == 401
+
+
+def test_owner_role_management_success_and_safety_rules(
+    client: TestClient, db: Any
+) -> None:
+    owner = _register(client, "owner-actions@example.it")
+    target = _register(client, "staff-actions@example.it")
+    db.users.update_many({}, {"$set": {"emailVerified": True}})
+    db.users.update_one({"_id": owner["user"]["id"]}, {"$set": {"role": "owner"}})
+
+    promoted = client.put(
+        f"/v1/owner/users/{target['user']['id']}/role",
+        json={"role": "manager"},
+        headers=_authorization(owner),
+    )
+    old_target_session = client.get("/v1/auth/me", headers=_authorization(target))
+    self_demote = client.put(
+        f"/v1/owner/users/{owner['user']['id']}/role",
+        json={"role": "manager"},
+        headers=_authorization(owner),
+    )
+
+    assert promoted.json() == {"ok": True, "role": "manager"}
+    assert db.users.find_one({"_id": target["user"]["id"]})["role"] == "manager"
+    assert old_target_session.status_code == 401
+    assert self_demote.status_code == 409
+    assert db.users.find_one({"_id": owner["user"]["id"]})["role"] == "owner"
+
+
+def test_admin_service_catalog_and_studio_configuration_actions(
+    client: TestClient, db: Any
+) -> None:
+    manager = _register(client, "catalog-manager@example.it")
+    db.users.update_one(
+        {"_id": manager["user"]["id"]},
+        {"$set": {"role": "manager", "emailVerified": True}},
+    )
+    headers = _authorization(manager)
+    service = {
+        "name": "Piega lunga",
+        "category": "Styling",
+        "description": "Piega su capelli lunghi",
+        "durationMinutes": 50,
+        "bufferMinutes": 10,
+        "priceCents": 4200,
+        "priceFrom": True,
+        "operatorIds": ["alessio"],
+        "active": True,
+        "displayOrder": 3,
+    }
+    created = client.post("/v1/admin/services", json=service, headers=headers)
+    service_id = created.json()["serviceId"]
+    changed = {**service, "name": "Piega premium", "active": False}
+    updated = client.put(
+        f"/v1/admin/services/{service_id}", json=changed, headers=headers
+    )
+    catalog = client.get(
+        "/v1/services", params={"includeInactive": True}, headers=headers
+    )
+    configured = client.patch(
+        "/v1/admin/studio-config",
+        json={
+            "studioName": "Alessio Garreffa Hair",
+            "address": "Via G. Cottolengo 44, Vinovo",
+            "timezone": "Europe/Rome",
+            "currency": "EUR",
+            "slotMinutes": 15,
+        },
+        headers=headers,
+    )
+    config = client.get("/v1/studio-config", headers=headers)
+
+    assert created.status_code == 201
+    assert updated.json() == {"ok": True}
+    assert catalog.status_code == 200
+    assert catalog.json()["items"][0]["name"] == "Piega premium"
+    assert catalog.json()["items"][0]["active"] is False
+    assert configured.json() == {"ok": True}
+    assert config.json()["config"]["address"] == "Via G. Cottolengo 44, Vinovo"
+
+
+def test_admin_reject_reschedule_complete_and_block_actions(
+    client: TestClient, db: Any
+) -> None:
+    _seed_booking_data(db)
+    customer = _register(client, "admin-actions-client@example.it")
+    manager = _register(client, "admin-actions-manager@example.it")
+    db.users.update_many({}, {"$set": {"emailVerified": True}})
+    db.users.update_one({"_id": manager["user"]["id"]}, {"$set": {"role": "manager"}})
+    customer_headers = _authorization(customer)
+    manager_headers = _authorization(manager)
+    start = _open_start()
+
+    rejected_request = client.post(
+        "/v1/appointments",
+        json={"serviceId": "taglio", "requestedStartAt": start.isoformat()},
+        headers=customer_headers,
+    )
+    rejected_id = rejected_request.json()["appointmentId"]
+    rejected = client.post(
+        f"/v1/admin/appointments/{rejected_id}/reject",
+        json={"reason": "Orario non disponibile"},
+        headers=manager_headers,
+    )
+
+    second_start = start + timedelta(hours=2)
+    confirmed_request = client.post(
+        "/v1/appointments",
+        json={"serviceId": "taglio", "requestedStartAt": second_start.isoformat()},
+        headers=customer_headers,
+    )
+    confirmed_id = confirmed_request.json()["appointmentId"]
+    accepted = client.post(
+        f"/v1/admin/appointments/{confirmed_id}/accept", headers=manager_headers
+    )
+    moved_start = second_start + timedelta(hours=1)
+    moved = client.post(
+        f"/v1/admin/appointments/{confirmed_id}/reschedule",
+        json={"startAt": moved_start.isoformat()},
+        headers=manager_headers,
+    )
+    completed = client.post(
+        f"/v1/admin/appointments/{confirmed_id}/complete", headers=manager_headers
+    )
+    block_start = start + timedelta(days=1)
+    blocked = client.post(
+        "/v1/admin/blocks",
+        json={
+            "startAt": block_start.isoformat(),
+            "endAt": (block_start + timedelta(hours=1)).isoformat(),
+            "reason": "Formazione",
+        },
+        headers=manager_headers,
+    )
+
+    assert rejected.json() == {"ok": True}
+    assert db.appointments.find_one({"_id": rejected_id})["status"] == "REJECTED"
+    assert accepted.json() == {"ok": True}
+    assert moved.json() == {"ok": True}
+    assert completed.json() == {"ok": True}
+    assert db.appointments.find_one({"_id": confirmed_id})["status"] == "COMPLETED"
+    assert blocked.status_code == 201
+    assert db.blocks.find_one({"_id": blocked.json()["blockId"]}) is not None

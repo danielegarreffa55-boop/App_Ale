@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d0f12">
+  <title>Alessio Garreffa Hair — Demo interattiva</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="showcase">
+    <section class="presentation">
+      <p class="overline">PROTOTIPO INTERATTIVO · NOVEMBRE 2026</p>
+      <h1>Alessio Garreffa<br><span>Hair Studio</span></h1>
+      <p class="presentation-copy">Una demo navigabile dell’esperienza cliente e della console amministrativa. Tutti i dati sono dimostrativi; struttura, contenuti e funzioni derivano dall’app reale.</p>
+      <div class="mode-switch" aria-label="Seleziona esperienza">
+        <button data-launch="client" class="mode-button active">Simula cliente</button>
+        <button data-launch="admin" class="mode-button">Simula admin</button>
+      </div>
+      <div class="hint"><span></span> Usa il telefono come una vera app</div>
+    </section>
+    <section class="phone-stage">
+      <div class="phone" aria-label="Prototipo app mobile">
+        <div class="phone-speaker"></div>
+        <div id="app" class="app"></div>
+      </div>
+      <div class="demo-tools">
+        <button id="restartDemo">↺ Riavvia</button>
+        <button id="showHelp">? Guida</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +17,7 @@ import '../../../shared/brand_logo.dart';
 import '../../../shared/dialog_action_row.dart';
 import '../../appointments/domain/appointment_models.dart';
 import 'admin_day_calendar.dart';
+import 'admin_calendar_views.dart';
 import 'owner_roles_section.dart';
 import 'owner_announcement_section.dart';
 
@@ -1104,6 +1107,7 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
   ];
 
   late DateTime _selectedDay;
+  AgendaViewMode _viewMode = AgendaViewMode.day;
   bool _updatingAgenda = false;
 
   void _setAgendaLoading(bool value) {
@@ -1441,13 +1445,17 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
     );
   }
 
-  ({int? start, int? end}) _openingWindow(Map<String, dynamic> config) {
+  ({int? start, int? end}) _openingWindow(
+    Map<String, dynamic> config, [
+    DateTime? targetDay,
+  ]) {
+    final calendarDay = targetDay ?? _selectedDay;
     final hours = Map<String, dynamic>.from(
       config['openingHours'] as Map? ?? const {},
     );
-    final rawDay = hours[_dayKeys[_selectedDay.weekday - 1]] as Map?;
+    final rawDay = hours[_dayKeys[calendarDay.weekday - 1]] as Map?;
     if (rawDay == null) {
-      return _selectedDay.weekday == DateTime.sunday
+      return calendarDay.weekday == DateTime.sunday
           ? (start: null, end: null)
           : (start: 9 * 60, end: 18 * 60);
     }
@@ -1467,19 +1475,48 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
 
   AdminAgendaRange get _agendaRange {
     final location = tz.getLocation(AppConfig.timezone);
+    late DateTime firstDay;
+    late DateTime lastDay;
+    switch (_viewMode) {
+      case AgendaViewMode.day:
+        firstDay = _selectedDay;
+        lastDay = _selectedDay.add(const Duration(days: 1));
+      case AgendaViewMode.week:
+        firstDay = _selectedDay.subtract(
+          Duration(days: _selectedDay.weekday - DateTime.monday),
+        );
+        lastDay = firstDay.add(const Duration(days: 7));
+      case AgendaViewMode.month:
+        firstDay = DateTime(_selectedDay.year, _selectedDay.month, 1);
+        lastDay = DateTime(_selectedDay.year, _selectedDay.month + 1, 1);
+    }
     final start = tz.TZDateTime(
       location,
-      _selectedDay.year,
-      _selectedDay.month,
-      _selectedDay.day,
+      firstDay.year,
+      firstDay.month,
+      firstDay.day,
     );
     final end = tz.TZDateTime(
       location,
-      _selectedDay.year,
-      _selectedDay.month,
-      _selectedDay.day + 1,
+      lastDay.year,
+      lastDay.month,
+      lastDay.day,
     );
     return (startAt: start.toUtc(), endAt: end.toUtc());
+  }
+
+  void _moveAgenda(int direction) {
+    setState(() {
+      _selectedDay = switch (_viewMode) {
+        AgendaViewMode.day => _selectedDay.add(Duration(days: direction)),
+        AgendaViewMode.week => _selectedDay.add(Duration(days: 7 * direction)),
+        AgendaViewMode.month => DateTime(
+          _selectedDay.year,
+          _selectedDay.month + direction,
+          math.min(_selectedDay.day, 28),
+        ),
+      };
+    });
   }
 
   Future<void> _openAppointment(Appointment item) async {
@@ -1683,7 +1720,7 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
           children: [
             _SectionHeader(
               'Agenda',
-              subtitle: 'Calendario giornaliero e gestione degli slot',
+              subtitle: 'Calendario operativo e gestione degli slot',
               actions: [
                 FilledButton.tonalIcon(
                   onPressed: _updatingAgenda
@@ -1714,16 +1751,35 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
               ],
             ),
             const SizedBox(height: 16),
+            SegmentedButton<AgendaViewMode>(
+              segments: const [
+                ButtonSegment(
+                  value: AgendaViewMode.day,
+                  label: Text('Giorno'),
+                  icon: Icon(Icons.view_day_outlined),
+                ),
+                ButtonSegment(
+                  value: AgendaViewMode.week,
+                  label: Text('Settimana'),
+                  icon: Icon(Icons.view_week_outlined),
+                ),
+                ButtonSegment(
+                  value: AgendaViewMode.month,
+                  label: Text('Mese'),
+                  icon: Icon(Icons.calendar_view_month_outlined),
+                ),
+              ],
+              selected: {_viewMode},
+              onSelectionChanged: (selection) =>
+                  setState(() => _viewMode = selection.first),
+              showSelectedIcon: false,
+            ),
+            const SizedBox(height: 10),
             _AgendaDateToolbar(
               day: _selectedDay,
-              onPrevious: () => setState(
-                () => _selectedDay = _selectedDay.subtract(
-                  const Duration(days: 1),
-                ),
-              ),
-              onNext: () => setState(
-                () => _selectedDay = _selectedDay.add(const Duration(days: 1)),
-              ),
+              viewMode: _viewMode,
+              onPrevious: () => _moveAgenda(-1),
+              onNext: () => _moveAgenda(1),
               onPickDate: () => _pickAgendaDay(context),
               onToday: () {
                 final today = DateTime.now().inStudioTimezone;
@@ -1763,19 +1819,46 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
                   return AsyncValueView<List<AgendaBlock>>(
                     value: blocks,
                     onRetry: () => ref.invalidate(adminBlocksProvider),
-                    data: (dayBlocks) => AdminDayCalendar(
-                      day: _selectedDay,
-                      appointments: calendarItems,
-                      blocks: dayBlocks,
-                      startHour: startHour,
-                      endHour: endHour,
-                      openingStartMinute: opening.start,
-                      openingEndMinute: opening.end,
-                      onEmptySlotTap: (startAt) =>
-                          _manualAppointment(context, initialStartAt: startAt),
-                      onAppointmentTap: _openAppointment,
-                      onBlockTap: _openBlock,
-                    ),
+                    data: (dayBlocks) => switch (_viewMode) {
+                      AgendaViewMode.day => AdminDayCalendar(
+                        day: _selectedDay,
+                        appointments: calendarItems,
+                        blocks: dayBlocks,
+                        startHour: startHour,
+                        endHour: endHour,
+                        openingStartMinute: opening.start,
+                        openingEndMinute: opening.end,
+                        onEmptySlotTap: (startAt) => _manualAppointment(
+                          context,
+                          initialStartAt: startAt,
+                        ),
+                        onAppointmentTap: _openAppointment,
+                        onBlockTap: _openBlock,
+                      ),
+                      AgendaViewMode.week => AdminWeekCalendar(
+                        selectedDay: _selectedDay,
+                        appointments: calendarItems,
+                        blocks: dayBlocks,
+                        startHour: startHour,
+                        endHour: endHour,
+                        onEmptySlotTap: (startAt) => _manualAppointment(
+                          context,
+                          initialStartAt: startAt,
+                        ),
+                        onAppointmentTap: _openAppointment,
+                        onBlockTap: _openBlock,
+                        onDayTap: (day) => setState(() => _selectedDay = day),
+                      ),
+                      AgendaViewMode.month => AdminMonthCalendar(
+                        selectedDay: _selectedDay,
+                        appointments: calendarItems,
+                        onDayTap: (day) => setState(() {
+                          _selectedDay = day;
+                          _viewMode = AgendaViewMode.day;
+                        }),
+                        onAppointmentTap: _openAppointment,
+                      ),
+                    },
                   );
                 },
               ),
@@ -1816,6 +1899,7 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
 class _AgendaDateToolbar extends StatelessWidget {
   const _AgendaDateToolbar({
     required this.day,
+    required this.viewMode,
     required this.onPrevious,
     required this.onNext,
     required this.onPickDate,
@@ -1824,6 +1908,7 @@ class _AgendaDateToolbar extends StatelessWidget {
   });
 
   final DateTime day;
+  final AgendaViewMode viewMode;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onPickDate;
@@ -1832,7 +1917,11 @@ class _AgendaDateToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatted = DateFormat('EEEE d MMMM yyyy', 'it_IT').format(day);
+    final formatted = switch (viewMode) {
+      AgendaViewMode.day => DateFormat('EEEE d MMMM yyyy', 'it_IT').format(day),
+      AgendaViewMode.week => _weekLabel(day),
+      AgendaViewMode.month => DateFormat('MMMM yyyy', 'it_IT').format(day),
+    };
     final label = formatted.isEmpty
         ? formatted
         : '${formatted[0].toUpperCase()}${formatted.substring(1)}';
@@ -1890,6 +1979,16 @@ class _AgendaDateToolbar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _weekLabel(DateTime day) {
+    final start = day.subtract(Duration(days: day.weekday - DateTime.monday));
+    final end = start.add(const Duration(days: 6));
+    if (start.month == end.month) {
+      return '${start.day}–${end.day} ${DateFormat('MMMM yyyy', 'it_IT').format(end)}';
+    }
+    return '${DateFormat('d MMM', 'it_IT').format(start)} – '
+        '${DateFormat('d MMM yyyy', 'it_IT').format(end)}';
   }
 }
 
