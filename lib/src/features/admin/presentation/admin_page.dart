@@ -68,7 +68,11 @@ class _AdminPageState extends ConsumerState<AdminPage> {
       data: (allowed) {
         if (!allowed) return const _AccessDenied();
         final isOwner = ref.watch(isOwnerProvider).value ?? false;
-        final width = MediaQuery.sizeOf(context).width;
+        final media = MediaQuery.of(context);
+        final width = media.size.width;
+        final compactLandscape =
+            media.orientation == Orientation.landscape &&
+            media.size.height < 600;
         final wide = width >= 980;
         final labels = [
           ..._labels,
@@ -107,6 +111,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
         };
         return Scaffold(
           appBar: AppBar(
+            toolbarHeight: compactLandscape ? 48 : null,
             title: const BrandWordmark(),
             actions: [
               IconButton(
@@ -163,7 +168,9 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1440),
                     child: Padding(
-                      padding: EdgeInsets.all(wide ? 24 : 12),
+                      padding: EdgeInsets.all(
+                        compactLandscape ? 8 : (wide ? 24 : 12),
+                      ),
                       child: content,
                     ),
                   ),
@@ -1751,28 +1758,9 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
               ],
             ),
             const SizedBox(height: 16),
-            SegmentedButton<AgendaViewMode>(
-              segments: const [
-                ButtonSegment(
-                  value: AgendaViewMode.day,
-                  label: Text('Giorno'),
-                  icon: Icon(Icons.view_day_outlined),
-                ),
-                ButtonSegment(
-                  value: AgendaViewMode.week,
-                  label: Text('Settimana'),
-                  icon: Icon(Icons.view_week_outlined),
-                ),
-                ButtonSegment(
-                  value: AgendaViewMode.month,
-                  label: Text('Mese'),
-                  icon: Icon(Icons.calendar_view_month_outlined),
-                ),
-              ],
-              selected: {_viewMode},
-              onSelectionChanged: (selection) =>
-                  setState(() => _viewMode = selection.first),
-              showSelectedIcon: false,
+            AdminAgendaViewSelector(
+              selected: _viewMode,
+              onChanged: (mode) => setState(() => _viewMode = mode),
             ),
             const SizedBox(height: 10),
             _AgendaDateToolbar(

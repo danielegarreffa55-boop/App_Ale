@@ -5,7 +5,7 @@ Data verifica: 8 novembre 2026
 ## Esito sintetico
 
 - Backend/API: **31 test superati**.
-- Interfaccia Flutter: **22 test superati**.
+- Interfaccia Flutter: **24 test superati**, inclusi i layout telefono landscape.
 - Analisi statica Flutter: **0 problemi**.
 - Test end-to-end su dispositivo: non eseguibile in questo repository, perché il progetto non contiene il target Windows e Flutter non supporta `flutter test integration_test` su browser web.
 - Servizi esterni (SMTP, OneSignal e Google Calendar): verificati tramite contratti, persistenza, gestione errori e mock. Non sono stati inviati messaggi né creati eventi reali.
@@ -29,6 +29,7 @@ Data verifica: 8 novembre 2026
 | Annunci | autorizzazione owner, salvataggio annuncio, popup lato cliente | Superato |
 | Navigazione/prenotazione UI | servizi dinamici, selezione separata giorno/orario, slot occupato disabilitato, pulsante prenotazione | Superato |
 | Aspetto UI modificato | card appuntamento senza overflow, calendario admin giorno/settimana/mese, popup annuncio | Superato |
+| Rotazione telefono | navigazione cliente laterale, accesso scorrevole, spaziature compatte e assenza di overflow a 844x390 | Superato |
 | Notifiche e promemoria | credenziali scheduler, idempotenza, fallimento temporaneo e retry push | Superato con mock |
 
 ## Limiti della verifica automatica

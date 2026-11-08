@@ -14,6 +14,32 @@ void main() {
     await initializeDateFormatting('it_IT');
   });
 
+  testWidgets('le etichette agenda non vengono spezzate su schermi stretti', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.editorial,
+        home: Scaffold(
+          body: AdminAgendaViewSelector(
+            selected: AgendaViewMode.week,
+            onChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    final week = tester.widget<Text>(find.text('Settimana'));
+    expect(week.maxLines, 1);
+    expect(week.softWrap, isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
   Appointment appointment(DateTime start) => Appointment(
     id: 'appointment-1',
     clientId: 'client-1',

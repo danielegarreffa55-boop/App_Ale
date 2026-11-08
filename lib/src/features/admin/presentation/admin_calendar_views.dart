@@ -11,6 +11,61 @@ import '../../appointments/domain/appointment_models.dart';
 
 enum AgendaViewMode { day, week, month }
 
+class AdminAgendaViewSelector extends StatelessWidget {
+  const AdminAgendaViewSelector({
+    required this.selected,
+    required this.onChanged,
+    super.key,
+  });
+
+  final AgendaViewMode selected;
+  final ValueChanged<AgendaViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const segments = [
+      ButtonSegment(
+        value: AgendaViewMode.day,
+        label: Text('Giorno', maxLines: 1, softWrap: false),
+        icon: Icon(Icons.view_day_outlined),
+      ),
+      ButtonSegment(
+        value: AgendaViewMode.week,
+        label: Text('Settimana', maxLines: 1, softWrap: false),
+        icon: Icon(Icons.view_week_outlined),
+      ),
+      ButtonSegment(
+        value: AgendaViewMode.month,
+        label: Text('Mese', maxLines: 1, softWrap: false),
+        icon: Icon(Icons.calendar_view_month_outlined),
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) => Align(
+        alignment: Alignment.centerLeft,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: SegmentedButton<AgendaViewMode>(
+            segments: segments,
+            selected: {selected},
+            onSelectionChanged: (selection) => onChanged(selection.first),
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 10),
+              ),
+              minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AdminWeekCalendar extends StatelessWidget {
   const AdminWeekCalendar({
     required this.selectedDay,

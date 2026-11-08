@@ -14,6 +14,9 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final compactLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape &&
+        MediaQuery.sizeOf(context).height < 600;
     final appointments = ref.watch(clientAppointmentsProvider);
     final user = ref.watch(authStateProvider).value;
     final displayName = user?.displayName;
@@ -31,7 +34,7 @@ class HomePage extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(clientAppointmentsProvider),
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(compactLandscape ? 12 : 20),
         children: [
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 900),
@@ -87,7 +90,7 @@ class HomePage extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: compactLandscape ? 18 : 32),
                 Row(
                   children: [
                     Expanded(

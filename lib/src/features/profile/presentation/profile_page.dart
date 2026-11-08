@@ -98,8 +98,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).value;
+    final compactLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape &&
+        MediaQuery.sizeOf(context).height < 600;
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(compactLandscape ? 12 : 20),
       children: [
         Center(
           child: ConstrainedBox(

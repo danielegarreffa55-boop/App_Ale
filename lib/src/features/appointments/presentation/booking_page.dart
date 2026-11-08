@@ -221,8 +221,11 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   Widget build(BuildContext context) {
     final services = ref.watch(servicesProvider);
     final bounds = _dateBounds();
+    final compactLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape &&
+        MediaQuery.sizeOf(context).height < 600;
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(compactLandscape ? 12 : 20),
       children: [
         Center(
           child: ConstrainedBox(
@@ -369,7 +372,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                   },
                 ),
                 if (_service != null) ...[
-                  const SizedBox(height: 32),
+                  SizedBox(height: compactLandscape ? 18 : 32),
                   Text(
                     'Scegli giorno e orario',
                     style: Theme.of(context).textTheme.titleLarge,

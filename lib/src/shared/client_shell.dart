@@ -166,15 +166,24 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     });
     final location = GoRouterState.of(context).uri.path;
     final selected = _paths.indexWhere(location.startsWith).clamp(0, 3);
-    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final media = MediaQuery.of(context);
+    final landscapePhone =
+        media.orientation == Orientation.landscape && media.size.height < 600;
+    final wide = media.size.width >= 900 || landscapePhone;
     if (wide) {
       return Scaffold(
-        appBar: AppBar(title: const BrandWordmark()),
+        appBar: AppBar(
+          toolbarHeight: landscapePhone ? 48 : null,
+          title: const BrandWordmark(),
+        ),
         body: Row(
           children: [
             NavigationRail(
+              minWidth: landscapePhone ? 64 : null,
               selectedIndex: selected,
-              labelType: NavigationRailLabelType.all,
+              labelType: landscapePhone
+                  ? NavigationRailLabelType.selected
+                  : NavigationRailLabelType.all,
               onDestinationSelected: (index) => context.go(_paths[index]),
               destinations: _destinations
                   .map(

@@ -144,6 +144,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final compactLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape &&
+        MediaQuery.sizeOf(context).height < 600;
     return Scaffold(
       // Keep the visual hierarchy stable while iOS animates its keyboard.  The
       // scroll view, rather than swapping widgets or re-centring the page,
@@ -154,21 +157,26 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           alignment: Alignment.topCenter,
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            padding: EdgeInsets.fromLTRB(
+              compactLandscape ? 12 : 20,
+              compactLandscape ? 10 : 24,
+              compactLandscape ? 12 : 20,
+              compactLandscape ? 12 : 24,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
                 children: [
                   const BrandWordmark(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: compactLandscape ? 8 : 20),
                   Text(
                     _register ? 'Crea il tuo profilo cliente' : 'Bentornato. Il tuo prossimo appuntamento ti aspetta.',
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: compactLandscape ? 12 : 28),
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(compactLandscape ? 18 : 24),
                       child: Form(
                         key: _formKey,
                         child: AutofillGroup(
