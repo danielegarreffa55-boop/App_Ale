@@ -60,7 +60,7 @@ def _authorization(session: dict[str, Any]) -> dict[str, str]:
 def _open_start() -> datetime:
     zone = ZoneInfo("Europe/Rome")
     day = (utc_now().astimezone(zone) + timedelta(days=7)).date()
-    while day.weekday() == 6:
+    while day.weekday() >= 5:
         day += timedelta(days=1)
     return datetime(day.year, day.month, day.day, 10, 0, tzinfo=zone)
 
