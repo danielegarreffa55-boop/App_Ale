@@ -31,6 +31,8 @@ class AdminPage extends ConsumerStatefulWidget {
 class _AdminPageState extends ConsumerState<AdminPage> {
   var _selected = 0;
   var _agendaInitialDayOffset = 0;
+  var _agendaFullScreen = false;
+  final _agendaKey = GlobalKey<_AgendaSectionState>();
 
   static const _labels = [
     'Dashboard',
@@ -55,7 +57,12 @@ class _AdminPageState extends ConsumerState<AdminPage> {
     setState(() {
       _selected = index;
       if (index == 2) _agendaInitialDayOffset = agendaDayOffset;
+      if (index != 2) _agendaFullScreen = false;
     });
+  }
+
+  void _setAgendaFullScreen(bool value) {
+    setState(() => _agendaFullScreen = value);
   }
 
   @override
@@ -95,8 +102,10 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                 _selectSection(2, agendaDayOffset: offset),
           ),
           2 => _AgendaSection(
-            key: ValueKey(_agendaInitialDayOffset),
+            key: _agendaKey,
             initialDayOffset: _agendaInitialDayOffset,
+            isFullScreen: _agendaFullScreen,
+            onFullScreenChanged: _setAgendaFullScreen,
           ),
           3 => const _ClientsSection(),
           4 => const _ServicesSection(),
@@ -109,6 +118,22 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                 _selectSection(section, agendaDayOffset: agendaDayOffset),
           ),
         };
+        if (_agendaFullScreen && _selected == 2) {
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop) _setAgendaFullScreen(false);
+            },
+            child: Scaffold(
+              body: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: content,
+                ),
+              ),
+            ),
+          );
+        }
         return Scaffold(
           appBar: AppBar(
             toolbarHeight: compactLandscape ? 48 : null,
@@ -1094,9 +1119,16 @@ class _AppointmentConflictWarning extends StatelessWidget {
 }
 
 class _AgendaSection extends ConsumerStatefulWidget {
-  const _AgendaSection({super.key, this.initialDayOffset = 0});
+  const _AgendaSection({
+    required this.isFullScreen,
+    required this.onFullScreenChanged,
+    super.key,
+    this.initialDayOffset = 0,
+  });
 
   final int initialDayOffset;
+  final bool isFullScreen;
+  final ValueChanged<bool> onFullScreenChanged;
 
   @override
   ConsumerState<_AgendaSection> createState() => _AgendaSectionState();
@@ -1130,6 +1162,19 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
       today.month,
       today.day,
     ).add(Duration(days: widget.initialDayOffset));
+  }
+
+  @override
+  void didUpdateWidget(covariant _AgendaSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialDayOffset != widget.initialDayOffset) {
+      final today = DateTime.now().inStudioTimezone;
+      _selectedDay = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).add(Duration(days: widget.initialDayOffset));
+    }
   }
 
   Future<void> _manualAppointment(
@@ -1725,42 +1770,65 @@ class _AgendaSectionState extends ConsumerState<_AgendaSection> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionHeader(
-              'Agenda',
-              subtitle: 'Calendario operativo e gestione degli slot',
-              actions: [
-                FilledButton.tonalIcon(
-                  onPressed: _updatingAgenda
-                      ? null
-                      : () => _createBlock(
-                          context,
-                          initialStartAt: _suggestedStart(
-                            opening.start,
-                            opening.end,
+            if (!widget.isFullScreen) ...[
+              _SectionHeader(
+                'Agenda',
+                subtitle: 'Calendario operativo e gestione degli slot',
+                actions: [
+                  FilledButton.tonalIcon(
+                    key: const Key('agendaEnterFullScreen'),
+                    onPressed: () => widget.onFullScreenChanged(true),
+                    icon: const Icon(Icons.fullscreen_rounded),
+                    label: const Text('Schermo intero'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: _updatingAgenda
+                        ? null
+                        : () => _createBlock(
+                            context,
+                            initialStartAt: _suggestedStart(
+                              opening.start,
+                              opening.end,
+                            ),
                           ),
-                        ),
-                  icon: const Icon(Icons.block_outlined),
-                  label: const Text('Blocca fascia'),
-                ),
-                FilledButton.icon(
-                  onPressed: _updatingAgenda
-                      ? null
-                      : () => _manualAppointment(
-                          context,
-                          initialStartAt: _suggestedStart(
-                            opening.start,
-                            opening.end,
+                    icon: const Icon(Icons.block_outlined),
+                    label: const Text('Blocca fascia'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _updatingAgenda
+                        ? null
+                        : () => _manualAppointment(
+                            context,
+                            initialStartAt: _suggestedStart(
+                              opening.start,
+                              opening.end,
+                            ),
                           ),
-                        ),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Nuovo'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Nuovo'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: AdminAgendaViewSelector(
+                    selected: _viewMode,
+                    onChanged: (mode) => setState(() => _viewMode = mode),
+                  ),
                 ),
+                if (widget.isFullScreen) ...[
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    key: const Key('agendaExitFullScreen'),
+                    tooltip: 'Esci da schermo intero',
+                    onPressed: () => widget.onFullScreenChanged(false),
+                    icon: const Icon(Icons.fullscreen_exit_rounded),
+                  ),
+                ],
               ],
-            ),
-            const SizedBox(height: 16),
-            AdminAgendaViewSelector(
-              selected: _viewMode,
-              onChanged: (mode) => setState(() => _viewMode = mode),
             ),
             const SizedBox(height: 10),
             _AgendaDateToolbar(
