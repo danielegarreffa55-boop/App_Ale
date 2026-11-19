@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
 
+env:
+  # The app uses OneSignal for notifications only. Excluding its optional
+  # location module prevents iOS from requiring a location purpose string.
+  ONESIGNAL_DISABLE_LOCATION: true
+
 jobs:
   api:
     runs-on: ubuntu-26.04
@@ -40,15 +45,23 @@ jobs:
     name: Deploy to TestFlight
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [api, flutter]
-    # The default macos-26 image is ARM64 and can be cancelled when GitHub's
-    # limited ARM capacity is exhausted. The Intel image has the same macOS
-    # release and Xcode toolchain, with a separate runner pool.
-    runs-on: macos-26-intel
+    # Apple requires the iOS 27 SDK for uploads starting in April 2027.
+    runs-on: xcode-27
     concurrency:
       group: testflight-production
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
+
+      - name: Validate iOS SDK version
+        run: |
+          xcodebuild -version
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "Building with iOS SDK $sdk_version"
+          if [[ "${sdk_version%%.*}" -lt 27 ]]; then
+            echo "::error::iOS 27 SDK or later is required"
+            exit 1
+          fi
 
       - name: Validate iOS app icons
         run: |
@@ -122,6 +135,14 @@ jobs:
             -archivePath build/ios/archive/Runner.xcarchive \
             -exportPath build/ios/ipa \
             -exportOptionsPlist ios/ExportOptions-TestFlight.plist
+
+      - name: Verify location module is excluded
+        run: |
+          if unzip -l build/ios/ipa/AGH.ipa | grep -q 'OneSignalLocation'; then
+            echo "::error::The unused OneSignal location module is present"
+            exit 1
+          fi
+          echo "OneSignal location module is not present"
 
       - name: Upload to TestFlight
         env:
