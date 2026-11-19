@@ -40,7 +40,10 @@ jobs:
     name: Deploy to TestFlight
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [api, flutter]
-    runs-on: macos-26
+    # The default macos-26 image is ARM64 and can be cancelled when GitHub's
+    # limited ARM capacity is exhausted. The Intel image has the same macOS
+    # release and Xcode toolchain, with a separate runner pool.
+    runs-on: macos-26-intel
     concurrency:
       group: testflight-production
       cancel-in-progress: false
