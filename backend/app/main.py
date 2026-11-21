@@ -9,7 +9,7 @@ from typing import Annotated, Any
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, Query, Request
+from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -139,8 +139,13 @@ def _appointment_response(
     }
 
 
-@app.get("/healthz")
-def health() -> dict[str, str]:
+@app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
+async def health(response: Response) -> dict[str, str]:
+    # Liveness must stay local and instantaneous: in particular, do not add a
+    # database or third-party check here. External monitors use this endpoint
+    # to wake the service and must still receive a response during an outage of
+    # a downstream dependency. /readyz is the dependency-aware check.
+    response.headers["Cache-Control"] = "no-store"
     return {"status": "ok", "service": "alessio-garreffa-hair-api"}
 
 

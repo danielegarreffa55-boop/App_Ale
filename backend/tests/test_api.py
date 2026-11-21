@@ -96,13 +96,27 @@ def _seed_booking_data(db: Any) -> None:
     )
 
 
-def test_health_endpoint(client: TestClient) -> None:
+def test_health_endpoint(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail_if_database_is_touched() -> None:
+        raise AssertionError("The liveness endpoint must not access MongoDB")
+
+    monkeypatch.setattr(main, "mongo_client", fail_if_database_is_touched)
+    monkeypatch.setattr(main, "database", fail_if_database_is_touched)
+
     response = client.get("/healthz")
     assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
     assert response.json() == {
         "status": "ok",
         "service": "alessio-garreffa-hair-api",
     }
+
+    head_response = client.head("/healthz")
+    assert head_response.status_code == 200
+    assert head_response.headers["cache-control"] == "no-store"
+    assert head_response.content == b""
 
 
 @pytest.mark.parametrize("action", ["verify-email", "reset-password"])
