@@ -22,18 +22,20 @@ class ApiException implements Exception {
 }
 
 class BackendApi {
-  BackendApi({SessionStore? sessionStore, http.Client? client})
+  BackendApi({SessionStore? sessionStore, http.Client? client, String? baseUrl})
     : _sessionStore = sessionStore ?? SessionStore.instance,
-      _client = client ?? http.Client();
+      _client = client ?? http.Client(),
+      _baseUrl = baseUrl ?? AppConfig.backendApiUrl;
 
   static final instance = BackendApi();
 
   final SessionStore _sessionStore;
   final http.Client _client;
-  Future<bool>? _refreshInFlight;
+  final String _baseUrl;
+  Future<_RefreshResult>? _refreshInFlight;
   void Function()? onSessionExpired;
 
-  bool get enabled => AppConfig.isBackendConfigured;
+  bool get enabled => _baseUrl.trim().isNotEmpty;
 
   Future<Map<String, dynamic>> get(
     String path, {
@@ -87,15 +89,24 @@ class BackendApi {
       authenticated: authenticated,
     );
     if (response.statusCode == 401 && authenticated && retryAfterRefresh) {
-      if (await _refreshTokens()) {
-        return _send(
-          method,
-          path,
-          query: query,
-          body: body,
-          authenticated: true,
-          retryAfterRefresh: false,
-        );
+      switch (await _refreshTokens()) {
+        case _RefreshResult.succeeded:
+          return _send(
+            method,
+            path,
+            query: query,
+            body: body,
+            authenticated: true,
+            retryAfterRefresh: false,
+          );
+        case _RefreshResult.temporarilyUnavailable:
+          throw const ApiException(
+            code: 'session-refresh-unavailable',
+            message: 'SESSION_REFRESH_UNAVAILABLE',
+          );
+        case _RefreshResult.rejected:
+        case _RefreshResult.missing:
+          break;
       }
     }
     return _decode(response);
@@ -108,7 +119,7 @@ class BackendApi {
     Map<String, Object?>? body,
     required bool authenticated,
   }) async {
-    final base = AppConfig.backendApiUrl.trim().replaceFirst(RegExp(r'/$'), '');
+    final base = _baseUrl.trim().replaceFirst(RegExp(r'/$'), '');
     var uri = Uri.parse('$base$path');
     if (query != null) uri = uri.replace(queryParameters: query);
     final accessToken = _sessionStore.accessToken;
@@ -164,7 +175,7 @@ class BackendApi {
     );
   }
 
-  Future<bool> _refreshTokens() async {
+  Future<_RefreshResult> _refreshTokens() async {
     if (_refreshInFlight case final pending?) return pending;
     final future = _doRefresh();
     _refreshInFlight = future;
@@ -175,9 +186,11 @@ class BackendApi {
     }
   }
 
-  Future<bool> _doRefresh() async {
+  Future<_RefreshResult> _doRefresh() async {
     final refreshToken = _sessionStore.refreshToken;
-    if (refreshToken == null || refreshToken.isEmpty) return false;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return _RefreshResult.missing;
+    }
     try {
       final response = await _perform(
         'POST',
@@ -190,15 +203,18 @@ class BackendApi {
         accessToken: data['accessToken']! as String,
         refreshToken: data['refreshToken']! as String,
       );
-      return true;
+      return _RefreshResult.succeeded;
     } on ApiException catch (error) {
       if (error.statusCode == 400 || error.statusCode == 401) {
         await _sessionStore.clear();
         onSessionExpired?.call();
+        return _RefreshResult.rejected;
       }
-      return false;
+      return _RefreshResult.temporarilyUnavailable;
     } catch (_) {
-      return false;
+      return _RefreshResult.temporarilyUnavailable;
     }
   }
 }
+
+enum _RefreshResult { succeeded, rejected, temporarilyUnavailable, missing }

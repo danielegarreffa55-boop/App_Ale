@@ -14,14 +14,43 @@ import '../features/profile/presentation/privacy_policy_page.dart';
 import '../shared/client_shell.dart';
 import '../shared/setup_required_page.dart';
 
-GoRouter createAppRouter(bool backendReady, AuthRepository authRepository) {
+class StartupRouteState extends ChangeNotifier {
+  StartupRouteState({required this.complete});
+
+  bool complete;
+  String? pendingLocation;
+
+  void finish() {
+    if (complete) return;
+    complete = true;
+    notifyListeners();
+  }
+}
+
+GoRouter createAppRouter(
+  bool backendReady,
+  AuthRepository authRepository, {
+  StartupRouteState? startupState,
+}) {
+  final refreshListenables = <Listenable>[authRepository];
+  if (startupState != null) refreshListenables.add(startupState);
   return GoRouter(
-    refreshListenable: authRepository,
+    refreshListenable: Listenable.merge(refreshListenables),
     redirect: (context, state) {
       if (!backendReady) {
         return state.matchedLocation == '/setup' ? null : '/setup';
       }
       if (state.matchedLocation == '/setup') return '/';
+      if (startupState != null && !startupState.complete) {
+        if (state.matchedLocation != '/startup') {
+          startupState.pendingLocation = state.uri.toString();
+          return '/startup';
+        }
+        return null;
+      }
+      if (state.matchedLocation == '/startup') {
+        return startupState?.pendingLocation ?? '/';
+      }
       final signedIn = authRepository.currentUser != null;
       final user = authRepository.currentUser;
       final verified =
@@ -44,6 +73,10 @@ GoRouter createAppRouter(bool backendReady, AuthRepository authRepository) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/startup',
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
       GoRoute(
         path: '/setup',
         builder: (context, state) => const SetupRequiredPage(),

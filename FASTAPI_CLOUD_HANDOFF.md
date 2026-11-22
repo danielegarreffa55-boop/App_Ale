@@ -43,29 +43,6 @@ Confrontare inoltre le altre variabili obbligatorie con `backend/README.md` e `.
    - `https://app-ale.fastapicloud.dev/readyz`
 4. Entrambi gli endpoint devono rispondere con esito positivo.
 
-### Monitoraggio gratuito con UptimeRobot
-
-Creare un monitor esterno con questi valori:
-
-| Impostazione | Valore |
-| --- | --- |
-| Tipo | `HTTP(s)` |
-| Nome | `App Ale backend` |
-| URL | `https://app-ale.fastapicloud.dev/healthz` |
-| Intervallo | `5 minuti` |
-| Metodo | `GET` (oppure `HEAD`, se disponibile) |
-
-Abilitare almeno un contatto di allerta verificato. Il monitor deve considerare
-valide solo le risposte HTTP `2xx`; non sono necessari header, credenziali o
-parametri segreti. `/healthz` non interroga MongoDB e quindi il controllo resta
-leggero e non puÃ² accumulare query. Usare `/readyz` soltanto per una verifica
-diagnostica separata e meno frequente: quell'endpoint esegue un ping al database.
-
-Il monitor esterno puÃ² mantenere attiva o risvegliare un'istanza quando la
-piattaforma lo consente, oltre a segnalare un disservizio. Non puÃ² invece
-correggere crash, configurazioni errate o limiti imposti dal piano di hosting:
-in caso di allarme controllare anche i log di FastAPI Cloud.
-
 ## 4. Test funzionali
 
 Su una build TestFlight installata:

@@ -4,7 +4,6 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../config/app_config.dart';
 import '../network/session_store.dart';
-import '../notifications/notification_service.dart';
 
 abstract final class AppBootstrap {
   static Future<bool> initialize() async {
@@ -12,7 +11,6 @@ abstract final class AppBootstrap {
     tz.setLocalLocation(tz.getLocation(AppConfig.timezone));
     await initializeDateFormatting('it_IT');
     await SessionStore.instance.initialize();
-    NotificationService.initialize();
     return AppConfig.isBackendConfigured;
   }
 }

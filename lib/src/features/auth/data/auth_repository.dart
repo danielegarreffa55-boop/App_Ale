@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/network/backend_api.dart';
 import '../../../core/network/session_store.dart';
 import '../../../core/notifications/notification_service.dart';
@@ -63,6 +62,7 @@ class AuthRepository extends ChangeNotifier {
   final NotificationService _notifications;
   final _changes = StreamController<AuthUser?>.broadcast();
   AuthUser? _currentUser;
+  Future<void>? _initializationInFlight;
 
   AuthUser? get currentUser => _currentUser;
 
@@ -71,9 +71,20 @@ class AuthRepository extends ChangeNotifier {
     yield* _changes.stream;
   }
 
-  Future<void> initialize() async {
+  Future<void> initialize() {
+    if (_initializationInFlight case final pending?) return pending;
+    final initialization = _initialize();
+    _initializationInFlight = initialization;
+    return initialization.whenComplete(() {
+      if (identical(_initializationInFlight, initialization)) {
+        _initializationInFlight = null;
+      }
+    });
+  }
+
+  Future<void> _initialize() async {
     await _sessionStore.initialize();
-    if (!AppConfig.isBackendConfigured || !_sessionStore.hasSession) return;
+    if (!_api.enabled || !_sessionStore.hasSession) return;
     try {
       final response = await _api.get('/v1/auth/me');
       await _setUser(
@@ -82,8 +93,10 @@ class AuthRepository extends ChangeNotifier {
     } on ApiException catch (error) {
       if (error.statusCode == 400 || error.statusCode == 401) {
         await _sessionStore.clear();
+        await _setUser(null);
+        return;
       }
-      await _setUser(null);
+      rethrow;
     }
   }
 
